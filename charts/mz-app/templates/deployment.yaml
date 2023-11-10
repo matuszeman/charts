@@ -1,0 +1,80 @@
+{{- if not .Values.debug -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mz-app.fullname" . }}
+  labels:
+    {{- include "mz-app.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "mz-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "mz-app.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "mz-app.serviceAccountName" . }}
+      securityContext:
+        # This is needed for containerd runtime, docker previously allowed binding to 80 port
+        sysctls:
+          - name: net.ipv4.ip_unprivileged_port_start
+            value: "0"
+      containers:
+        {{- $_ := required "containers.app required" .Values.containers.app -}}
+        {{- with .Values.containers }}
+        {{- range $k, $v := . }}
+        - {{- include "mz-app.container" ( list (merge (dict "name" $k) $v ) $ ) | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      volumes:
+        {{- with .Values.configs }}
+        {{- range $k, $v := . }}
+        - name: config-{{ $k }}
+          {{- if $v.fromConfigMap }}
+          configMap:
+            name: {{ tpl $v.fromConfigMap $ }}
+          {{- else if $v.fromSecret }}
+          secret:
+            secretName: {{ tpl $v.fromSecret $ }}
+          {{- else if $v.awsSecret }}
+          secret:
+            secretName: {{ printf "%s-config-%s" (include "mz-app.fullname" $ ) $k }}
+          {{- else if $v.content }}
+          configMap:
+            name: {{ printf "%s-config-%s" (include "mz-app.fullname" $ ) $k }}
+          {{- else }}
+          {{- required ( printf "configs.%s does not specify fromConfigMap, fromSecret, awsSecret, nor content" $k ) nil }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- with .Values.volumes }}
+        {{- range $name, $spec := . }}
+        - name: {{ $name }}
+          {{- toYaml $spec | nindent 10 }}
+        {{- end }}
+        {{- end }}
+      {{- with (index .Values.global.settings.clusters .Values.global.cluster).nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (index .Values.global.settings.clusters .Values.global.cluster).tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

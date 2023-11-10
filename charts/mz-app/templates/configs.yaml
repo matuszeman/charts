@@ -1,0 +1,72 @@
+{{- $cluster := required "cluster does not exist in cluster list" (index .Values.global.settings.clusters .Values.global.cluster) }}
+{{- if not .Values.debug -}}
+{{- $secretStore := false }}
+{{- range $configKey, $v := .Values.configs }}
+{{- if or .fromSecret .fromConfigMap }}
+{{- else if .awsSecret }}
+{{- $secretStore = true }}
+{{- with .awsSecret }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: {{ include "mz-app.fullname" $ }}-config-{{ $configKey }}
+  labels:
+    {{- include "mz-app.labels" $ | nindent 4 }}
+spec:
+  refreshInterval: {{ default "1h" .refreshInterval }}
+  secretStoreRef:
+    name: {{ include "mz-app.fullname" $ }}-config-secretsmanager
+    kind: SecretStore
+  target:
+    name: {{ include "mz-app.fullname" $ }}-config-{{ $configKey }}
+    creationPolicy: Owner
+    template:
+      engineVersion: "v2"
+      metadata:
+        labels:
+          {{- include "mz-app.labels" $ | nindent 10 }}
+  dataFrom:
+    - extract:
+        conversionStrategy: Default
+        decodingStrategy: None
+        key: {{ required (printf "configs.%s.awsSecret.arn required" $configKey) .arn }}
+        {{- with .versionId }}
+        version: uuid/{{ . | toString }}
+        {{- end }}
+{{- end }}
+{{- else }}
+{{- $_ := required (printf "configs.%s.content required (or set .fromSecret, .fromConfigMap)" $configKey) .content }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mz-app.fullname" $ }}-config-{{ $configKey }}
+  labels:
+    {{- include "mz-app.labels" $ | nindent 4 }}
+data:
+{{- range $contentKey, $v := .content }}
+  {{ $contentKey }}:
+{{- toYaml (required (printf "configs.%s.content.%s required" $configKey $contentKey ) $v) | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if $secretStore }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: {{ include "mz-app.fullname" $ }}-config-secretsmanager
+  labels:
+    {{- include "mz-app.labels" $ | nindent 4 }}
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: {{ required "$cluster.awsRegion required" $cluster.awsRegion }}
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: {{ include "mz-app.serviceAccountName" $ }}
+{{- end }}
+{{- end }}

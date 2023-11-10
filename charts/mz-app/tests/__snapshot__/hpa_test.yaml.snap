@@ -1,0 +1,26 @@
+should match snapshot with values-ci.yaml:
+  1: |
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        helm.sh/chart: mz-app-0.1.0
+      name: RELEASE-NAME-resource-suffix
+    spec:
+      maxReplicas: 10
+      metrics:
+        - resource:
+            name: cpu
+            target:
+              averageUtilization: 80
+              type: Utilization
+          type: Resource
+      minReplicas: 1
+      scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: RELEASE-NAME-resource-suffix

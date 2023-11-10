@@ -1,0 +1,22 @@
+{{- if not .Values.debug -}}
+{{- if .Values.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mz-app.fullname" . }}
+  labels:
+    {{- include "mz-app.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ required "service.port required" .Values.service.port }}
+      targetPort: {{ default "app" .Values.service.targetPort }}
+      protocol: TCP
+      name: app
+    {{- with .Values.service.additionalPorts }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  selector:
+    {{- include "mz-app.selectorLabels" . | nindent 4 }}
+{{- end}}
+{{- end}}

@@ -1,0 +1,9 @@
+suite: pdb
+values:
+  - ../values-ci.yaml
+templates:
+  - pdb.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    asserts:
+      - matchSnapshot: {}

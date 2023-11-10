@@ -1,0 +1,12 @@
+should match snapshot with values-ci.yaml:
+  1: |
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      name: RELEASE-NAME-resource-suffix
+    spec:
+      maxUnavailable: 0
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: app-name

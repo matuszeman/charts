@@ -1,0 +1,219 @@
+global:
+  cluster: prod-ec1
+
+  settings:
+    clusters:
+      dev-ec1:
+        awsRegion: eu-central-1
+        domains:
+          matuszeman.dev: stage.matuszeman.dev
+      #    nodeSelector:
+      #      environment: dev-ec1
+      #    tolerations:
+      #      - key: environment
+      #        operator: Equal
+      #        value: dev-ec1
+      #        effect: NoSchedule
+      prod-ec1:
+        awsRegion: eu-central-1
+        domains:
+          matuszeman.dev: matuszeman.dev
+
+    imageRepositories:
+      private: 1234567890.dkr.ecr.eu-central-1.amazonaws.com
+      public: public.ecr.aws/abcd1245
+      dockerhub: "docker.io"
+
+    defaults:
+      imageRepository: private
+      imagePullPolicy: IfNotPresent
+
+appName: app-name
+appVersion: 0.1.0
+resourceNameSuffix: "resource-suffix"
+
+service:
+  port: 80
+  targetPort: apache
+  additionalPorts:
+    - name: anotherport
+      port: 9000
+      targetPort: anotherport
+
+configs:
+  app:
+    content:
+      file1: file1 content
+      plaintextkey: sometext
+  app-secrets:
+    awsSecret:
+      arn: arn:aws:iam::123456789012:role/external-secrets
+      versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+  php:
+    content:
+      php.ini: |
+        memory_limit = 256M
+        max_execution_time = 180
+  not-managed-cm:
+    fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
+  not-managed-secret:
+    fromSecret: "{{ .Release.Name }}-not-managed-secret"
+
+volumes:
+  ephemeral-app-cache:
+    emptyDir:
+      sizeLimit: 10Mi
+
+containers:
+  app:
+    image: test-server
+    imageTag: 0.1.0
+    containerPort: 9000
+    additionalPorts:
+      - name: anotherport
+        containerPort: 9000
+
+    configDirs:
+      app: /app-config
+      app-secrets: /app-secrets
+
+    configFiles:
+      php:
+        php.ini: /etc/php.ini
+      not-managed-cm:
+        example.txt: /tmp/example.txt
+
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    livenessProbe:
+      httpGet:
+        path: /
+        port: app
+    readinessProbe:
+      httpGet:
+        path: /
+        port: app
+    startupProbe:
+      httpGet:
+        path: /
+        port: app
+      failureThreshold: 30
+      periodSeconds: 10
+
+    env:
+      stringValue: string
+      intValue: 123
+      floatValue: 456.789
+      # appEnv scalar values, configMapKeyRef.name, secretKeyRef.name are parsed using tpl function
+      # https://helm.sh/docs/howto/charts_tips_and_tricks/#using-the-tpl-function
+      templatedValue: "value-{{ .Release.Name }}"
+      configFromConfigContent:
+        config:
+          name: app
+          key: plaintextkey
+      configFromAwsSecret:
+        config:
+          name: app-secrets
+          key: somekey
+      configFromConfigMap:
+        config:
+          name: not-managed-cm
+          key: somekey
+      configFromSecret:
+        config:
+          name: not-managed-secret
+          key: somekey
+      secretKeyValue:
+        secretKeyRef:
+          name: app-secrets
+          key: some-key
+      secretKeyTemplatedValue:
+        secretKeyRef:
+          name: "app-secrets-{{ .Release.Name }}"
+          key: secret-key
+      configKeyValue:
+        configMapKeyRef:
+          name: "app-config"
+          key: cm-key
+      configKeyTemplatedValue:
+        configMapKeyRef:
+          name: "app-config-{{ .Release.Name }}"
+          key: cm-key
+
+    volumeMounts:
+      ephemeral-app-cache:
+        mountPath: /app/public/var
+
+  apache:
+    image: idp-example-web-app-apache
+    imageTag: 0.1.0
+    containerPort: 80
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    livenessProbe:
+      httpGet:
+        path: /
+        port: apache
+    readinessProbe:
+      httpGet:
+        path: /
+        port: apache
+
+affinity:
+  podAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: security
+              operator: In
+              values:
+                - S1
+        topologyKey: topology.kubernetes.io/zone
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: security
+                operator: In
+                values:
+                  - S2
+          topologyKey: topology.kubernetes.io/zone
+
+podDisruptionBudget:
+  maxUnavailable: 0
+
+autoscaling:
+  enabled: true
+  maxReplicas: 10
+
+ingress:
+  enabled: true
+  external: true
+  domain: matuszeman.dev
+  host: test
+  path: /somepath
+  rewriteTarget: /api
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: true
+  fcgi:
+    documentRoot: /html
+  basicAuth:
+    enabled: true
+    secretName: test-basic-auth
+
+serviceAccount:
+  awsRoleArn: arn:aws:iam::123456789012:role/test-role
+  #create: true # default value
+  #name: test-service-account

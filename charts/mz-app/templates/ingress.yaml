@@ -1,0 +1,62 @@
+{{- if not .Values.debug -}}
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "mz-app.fullname" . -}}
+{{- $cluster := required "cluster does not exist in cluster list" (index .Values.global.settings.clusters .Values.global.cluster) -}}
+{{- $domain := required "domain does not exist in env.domains" (index (required "$cluster.domains required" $cluster.domains) (required "ingress.domain required" .Values.ingress.domain)) -}}
+{{- $host := printf "%s.%s" .Values.ingress.host $domain -}}
+{{- $svcPort := ternary "fcgi" "http" (hasKey .Values.ingress "fcgi") -}}
+{{- $fcgiConfigMapName := printf "%s-ingress-fcgi" $fullName -}}
+{{- if eq $svcPort "fcgi" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fcgiConfigMapName }}
+data:
+  SCRIPT_FILENAME: {{ required "fcgi.documentRoot required" .Values.ingress.fcgi.documentRoot }}$fastcgi_script_name
+---
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "mz-app.labels" . | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.certManagerClusterIssuer }}
+    {{- if eq $svcPort "fcgi" }}
+    nginx.ingress.kubernetes.io/backend-protocol: "FCGI"
+    nginx.ingress.kubernetes.io/fastcgi-index: index.php
+    nginx.ingress.kubernetes.io/fastcgi-params-configmap: {{ $fcgiConfigMapName }}
+    {{- end }}
+    {{- if .Values.ingress.basicAuth.enabled }}
+    # https://kubernetes.github.io/ingress-nginx/examples/auth/basic/
+    nginx.ingress.kubernetes.io/auth-type: basic
+    # name of the secret that contains the user/password definitions
+    nginx.ingress.kubernetes.io/auth-secret: {{ required "ingress.basicAuth.secretName required" .Values.ingress.basicAuth.secretName }}
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
+    {{- end }}
+    {{- if .Values.ingress.rewriteTarget }}
+    nginx.ingress.kubernetes.io/rewrite-target: {{ .Values.ingress.rewriteTarget }}/$2
+    {{- end }}
+    {{- if .Values.ingress.annotations }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ ternary "nginx-external" "nginx-internal" .Values.ingress.external }}
+  tls:
+    - hosts:
+        - {{ $host | quote }}
+      secretName: {{ $fullName }}-ingress-tls
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}{{ if .Values.ingress.rewriteTarget }}(/|$)(.*){{ end }}
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ $fullName }}
+                port:
+                  name: app
+{{- end }}
+{{- end }}

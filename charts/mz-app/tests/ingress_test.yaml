@@ -1,0 +1,9 @@
+suite: ingress
+values:
+  - ../values-ci.yaml
+templates:
+  - ingress.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    asserts:
+      - matchSnapshot: {}

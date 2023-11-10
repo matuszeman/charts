@@ -1,0 +1,8 @@
+{{- if .Values.debug }}
+Release:
+  {{- toYaml .Release | nindent 2 }}
+Chart:
+  {{- toYaml .Chart | nindent 2 }}
+Values:
+  {{- toYaml .Values | nindent 2 }}
+{{- end }}

@@ -1,0 +1,116 @@
+suite: configs
+templates:
+  - configs.yaml
+  - deployment.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    values:
+      - ../values-ci.yaml
+    asserts:
+      - matchSnapshot: {}
+  - it: when fromConfigMap is specified, then do not generate managed ConfigMap and generate deployment volume
+    values:
+      - values/minimum.yaml
+    set:
+      configs:
+        not-managed-cm:
+          fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-not-managed-cm
+            configMap:
+              name: RELEASE-NAME-not-managed-cm
+        template: deployment.yaml
+
+  - it: when fromConfigMap and content is specified, then do not generate managed ConfigMap (prefer fromConfigMap)
+    values:
+      - values/minimum.yaml
+    set:
+      configs:
+        not-managed-cm:
+          fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
+          content:
+            example.txt: example content
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+  - it: when fromSecret is specified, then do not generate managed Secret, generate deployment volume
+    values:
+      - values/minimum.yaml
+    set:
+      configs:
+        not-managed-secret:
+          fromSecret: "{{ .Release.Name }}-not-managed-secret"
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-not-managed-secret
+            secret:
+              secretName: RELEASE-NAME-not-managed-secret
+        template: deployment.yaml
+  - it: when fromSecret and content is specified, then do not generate managed Secret (prefer fromSecret)
+    values:
+      - values/minimum.yaml
+    set:
+      configs:
+        not-managed-secret:
+          fromSecret: "{{ .Release.Name }}-not-managed-secret"
+          content:
+            example.txt: example content
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+  - it: when awsSecret is specified, then generate SecretStore and ExternalSecret
+    values:
+      - values/minimum.yaml
+    set:
+      configs:
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+            refreshInterval: 1h
+          content:
+            example.txt: example content
+    asserts:
+      - matchSnapshot:
+          template: configs.yaml
+  - it: when awsSecret with versionId is specified, then set it to externalsecret
+    values:
+      - values/minimum.yaml
+    set:
+      configs:
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+            versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+    asserts:
+      - equal:
+          path: spec.dataFrom[0].extract.version
+          value: uuid/a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+        template: configs.yaml
+        documentIndex: 0
+  - it: when awsSecret with no versionId is specified, then do not set it to externalsecret
+    values:
+      - values/minimum.yaml
+    set:
+      configs:
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+            #versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+    asserts:
+      - notExists:
+          path: spec.dataFrom[0].extract.version
+        template: configs.yaml
+        documentIndex: 0

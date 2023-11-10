@@ -1,0 +1,10 @@
+suite: all - no service
+values:
+  - ./values/no-service.yaml
+templates:
+  - deployment.yaml
+  - pdb.yaml
+tests:
+  - it: should match snapshot with values/no-service.yaml
+    asserts:
+      - matchSnapshot: {}

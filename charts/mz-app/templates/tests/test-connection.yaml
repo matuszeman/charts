@@ -1,0 +1,17 @@
+{{- if not .Values.debug -}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "mz-app.fullname" . }}-test-connection"
+  labels:
+    {{- include "mz-app.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "mz-app.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
+{{- end}}

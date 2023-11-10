@@ -1,0 +1,9 @@
+suite: service
+values:
+  - ../values-ci.yaml
+templates:
+  - service.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    asserts:
+      - matchSnapshot: {}

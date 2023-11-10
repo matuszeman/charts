@@ -1,0 +1,17 @@
+{{- if not .Values.debug -}}
+{{- if .Values.podDisruptionBudget.enabled -}}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "mz-app.fullname" . }}
+spec:
+  {{- if or (kindIs "string" .Values.podDisruptionBudget.maxUnavailable) (kindIs "float64" .Values.podDisruptionBudget.maxUnavailable) }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- end}}
+  selector:
+    matchLabels:
+      {{- include "mz-app.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- end }}

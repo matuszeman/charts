@@ -1,0 +1,72 @@
+appName:
+appVersion:
+resourceNameSuffix: ""
+
+# Pod
+replicaCount: 1
+podAnnotations: {}
+affinity: {}
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+  maxUnavailable:
+
+volumes: {}
+
+# Pod containers
+containers:
+  app:
+    #imagePullPolicy: IfNotPresent
+    #securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+    #env:
+    #  some: thing
+    #containerPort: 80
+    resources:
+      limits: {}
+      #cpu: 100m
+      #memory: 128Mi
+      requests: {}
+      #cpu: 100m
+      #memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  #maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+service:
+  enabled: true
+  type: ClusterIP
+  #portName: http
+  #port: 80
+  #targetPort: http
+
+ingress:
+  enabled: false
+  external: false
+  certManagerClusterIssuer: default
+#  fcgi:
+#    documentRoot: /html
+  path: /
+  #rewriteTarget: /api
+  annotations: {}
+  basicAuth:
+    enabled: false
+    secretName:
+
+debug: false
