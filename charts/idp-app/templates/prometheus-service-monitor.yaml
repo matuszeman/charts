@@ -1,0 +1,35 @@
+{{- if not .Values.debug -}}
+{{- if .Values.prometheus.serviceMonitor.enabled }}
+{{- if not $.Values.service.enabled }}
+{{- fail "prometheus.serviceMonitor: service must be enabled" }}
+{{- end }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+# https://github.com/prometheus-operator/prometheus-operator/blob/main/Documentation/api.md#servicemonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+spec:
+  endpoints:
+    - targetPort: {{ $.Values.prometheus.port | required "prometheus.port required" }}
+      {{- if $.Values.prometheus.serviceMonitor.interval }}
+      interval: {{ $.Values.prometheus.serviceMonitor.interval }}
+      {{- end }}
+      path: {{ $.Values.prometheus.path | required "prometheus.path required" }}
+      {{- if $.Values.prometheus.serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ $.Values.prometheus.serviceMonitor.scrapeTimeout }}
+      {{- end }}
+  namespaceSelector:
+    matchNames:
+      - {{ $.Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "idp-app.selectorLabels" (list $ $deploymentKey) | nindent 6 }}
+---
+{{- end}}
+{{- end}}
+{{- end}}

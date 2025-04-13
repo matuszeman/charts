@@ -1,0 +1,30 @@
+{{- if not .Values.debug -}}
+{{- if .Values.service.enabled }}
+{{- if not $.Values.deployment.enabled }}
+{{- fail "service: deployment must be enabled" }}
+{{- end }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+      {{- include "idp-app.labels" $ | nindent 4 }}
+spec:
+  type: {{ $.Values.service.type }}
+  ports:
+    - port: {{ required "service.port required" $.Values.service.port }}
+      targetPort: {{ default "app" $.Values.service.targetPort }}
+      protocol: {{ $.Values.service.targetPortProtocol | default "TCP" }}
+      name: app
+      {{- with $.Values.service.additionalPorts }}
+      {{- toYaml . | nindent 4 }}
+      {{- end }}
+  selector:
+      {{- include "idp-app.selectorLabels" (list $ $deploymentKey) | nindent 4 }}
+---
+{{- end}}
+{{- end}}
+{{- end}}

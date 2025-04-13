@@ -1,0 +1,69 @@
+{{- if not .Values.debug -}}
+{{- if and $.Values.deployment.enabled .Values.autoscaling.enabled }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: {{ $.Values.deployment.kind }}
+    name: {{ include "idp-app.fullname" $ }}{{- if $deploymentKey }}-{{ $deploymentKey }}{{- end }}
+  minReplicas: {{ required "autoscaling.minReplicas required" $.Values.autoscaling.minReplicas }}
+  maxReplicas: {{ required "autoscaling.maxReplicas required" $.Values.autoscaling.maxReplicas }}
+
+  behavior:
+    {{- if eq $.Values.autoscaling.scaleDown.preset "Lean" }}
+    scaleDown:
+      stabilizationWindowSeconds: {{ default 600 $.Values.autoscaling.scaleDown.stabilizationWindowSeconds }}
+      policies:
+        - type: Percent
+          value: 5
+          periodSeconds: 60
+    {{- else if eq $.Values.autoscaling.scaleDown.preset "Disabled" }}
+    scaleDown:
+      selectPolicy: Disabled
+    {{- else }}
+    {{- fail "autoscaling.scaleDown.preset not supported" }}
+    {{- end }}
+    {{- if eq $.Values.autoscaling.scaleUp.preset "Aggressive" }}
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 5
+          periodSeconds: 60
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+      selectPolicy: Max
+    {{- else }}
+    {{- fail "autoscaling.scaleUp.preset not supported" }}
+    {{- end }}
+
+  metrics:
+    {{- if $.Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $.Values.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+    {{- if $.Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $.Values.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

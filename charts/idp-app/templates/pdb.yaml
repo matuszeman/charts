@@ -1,0 +1,22 @@
+{{- if not .Values.debug -}}
+{{- if and .Values.deployment.enabled .Values.podDisruptionBudget.enabled -}}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $deploymentName }}
+spec:
+  {{- if or (kindIs "string" $.Values.podDisruptionBudget.maxUnavailable) (kindIs "float64" $.Values.podDisruptionBudget.maxUnavailable) }}
+  maxUnavailable: {{ $.Values.podDisruptionBudget.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ $.Values.podDisruptionBudget.minAvailable }}
+  {{- end}}
+  selector:
+    matchLabels:
+      {{- include "idp-app.selectorLabels" (list $ $deploymentKey) | nindent 6 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

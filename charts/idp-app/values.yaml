@@ -1,0 +1,170 @@
+global:
+  idpAppConfig:
+    imageRepositories:
+      dockerhub: "docker.io"
+      quay.io: "quay.io"
+
+    clusters:
+      test:
+        aws_region: eu-central-1
+        domains:
+          example.com: example.com
+        nodeSelector:
+          environment: test
+        tolerations:
+          - key: environment
+            operator: Equal
+            value: test
+            effect: NoSchedule
+
+    defaults:
+      imageRepository: private
+      imagePullPolicy: IfNotPresent
+      ingress:
+        enabled: false
+        external: false
+        certManagerClusterIssuer: default
+        #  fcgi:
+        #    documentRoot: /html
+        path: /
+        #rewriteTarget: /api
+        annotations: { }
+        basicAuth:
+          enabled: false
+          secretName:
+        oauth2ProxyAuth:
+          enabled: false
+          url: null
+          # overwrites url for signin url when specified
+          urlExternal: null
+          # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
+          allowedGroups: null # []
+          responseHeaders:
+            - Auth-Proxy-Email
+            - Auth-Proxy-Groups
+          path: /oauth2
+          service:
+            name: null
+            port: 80
+        accessLog:
+          enabled: true
+
+appName:
+appVersion:
+# resourceNameSuffix used when two or more idp-apps are deployed in the same helm release
+resourceNameSuffix: ""
+
+# Pod
+replicaCount: 1
+podAnnotations: {}
+affinity: {}
+#terminationGracePeriodSeconds: 30
+restartPolicy: null
+
+# Spot / OnDemand
+nodeCapacity:
+  type: Spot
+
+nodeSelector: {}
+
+topologySpreadConstraints:
+  zone: true
+  node: true
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+  maxUnavailable:
+
+enableServiceLinks: false
+
+volumes: {}
+
+deployment:
+  enabled: false
+  kind: Deployment
+  annotations: {}
+  revisionHistoryLimit: 1
+#  multi:
+#    one: {}
+#    two: {}
+  # https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+#  strategy:
+#    # RollingUpdate / Recreate
+#    type: RollingUpdate
+
+job:
+  enabled: false
+  annotations: {}
+
+cronjob:
+  enabled: false
+  annotations: {}
+  # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax
+  #schedule: @hourly
+  # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#concurrency-policy
+  concurrencyPolicy: "Allow"
+  startingDeadlineSeconds: null
+  failedJobsHistoryLimit: 3
+  successfulJobsHistoryLimit: 3
+
+# Pod containers
+containers:
+  app:
+    #imagePullPolicy: IfNotPresent
+    #securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+    #env:
+    #  some: thing
+    #containerPort: 80
+    resources:
+      limits: {}
+      #cpu: 100m
+      #memory: 128Mi
+      requests: {}
+      #cpu: 100m
+      #memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  #maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+  scaleDown:
+    # Options: Lean, Disabled
+    preset: Lean
+    #stabilizationWindowSeconds: 1200
+  scaleUp:
+    preset: Aggressive
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+service:
+  enabled: false
+  type: ClusterIP
+  #portName: http
+  #port: 80
+  #targetPort: http
+
+prometheus:
+#  port: prometheus-exporter
+#  path: /metrics
+  serviceMonitor:
+    enabled: false
+
+ingresses: {}
+ingress: {}
+
+debug: false

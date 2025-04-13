@@ -1,0 +1,36 @@
+{{- if not $.Values.debug -}}
+{{- if not (has $.Values.deployment.kind (list "Deployment" "StatefulSet")) }}
+  {{- fail "deployment.kind must be Deployment or StatefulSet" }}
+{{- end }}
+{{- if $.Values.deployment.enabled }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+apiVersion: apps/v1
+kind: {{ $.Values.deployment.kind }}
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  {{- with $.Values.deployment.annotations }}
+  annotations:
+    {{- toYaml $.Values.deployment.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not $.Values.autoscaling.enabled }}
+  replicas: {{ $.Values.replicaCount }}
+  {{- end }}
+  {{- with $.Values.deployment.strategy }}
+  strategy:
+    type: {{ .type }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "idp-app.selectorLabels" (list $ $deploymentKey) | nindent 6 }}
+  revisionHistoryLimit: {{ $.Values.deployment.revisionHistoryLimit }}
+  template:
+    {{- include "idp-app.podTemplate" (list $ $deploymentKey $deployment ) | nindent 4 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

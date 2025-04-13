@@ -1,0 +1,22 @@
+{{- if not $.Values.debug -}}
+{{- if $.Values.job.enabled }}
+{{- $deployments := (dict "" dict) }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  {{- with $.Values.job.annotations }}
+  annotations:
+    {{- toYaml $.Values.job.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  template:
+    {{- include "idp-app.podTemplate" (list $ $deploymentKey $deployment ) | nindent 4 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
