@@ -13,7 +13,7 @@
 {{- $cluster := required "cluster does not exist in cluster list" (index $.Values.global.idpAppConfig.clusters $.Values.global.cluster) }}
 {{- $domain := required "domain does not exist in global.idpAppConfig.cluster.CLUSTER.domains" (index (required "$cluster.domains required" $cluster.domains) (required "ingress.domain required" $ingress.domain)) }}
 {{- $host := (printf "%s.%s" $ingress.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
-{{- $ingressClassName := ternary "nginx-external" "nginx-internal" $ingress.external }}
+{{- $ingressClassName := default $ingress.className (ternary "nginx-external" "nginx-internal" $ingress.external) }}
 {{- $svcPort := hasKey $ingress "fcgi" | ternary "fcgi" "http" }}
 {{- $fcgiConfigMapName := printf "%s-ingress-fcgi" $ingressName }}
 {{- if eq $svcPort "fcgi" }}

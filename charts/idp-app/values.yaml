@@ -2,6 +2,7 @@ global:
   idpAppConfig:
     imageRepositories:
       dockerhub: "docker.io"
+      docker.io: "docker.io"
       quay.io: "quay.io"
 
     clusters:
@@ -22,7 +23,7 @@ global:
       imagePullPolicy: IfNotPresent
       ingress:
         enabled: false
-        external: false
+        #className: nginx-public
         certManagerClusterIssuer: default
         #  fcgi:
         #    documentRoot: /html
