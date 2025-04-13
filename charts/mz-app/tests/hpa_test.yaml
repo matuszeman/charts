@@ -1,9 +1,0 @@
-suite: hpa
-values:
-  - ../values-ci.yaml
-templates:
-  - hpa.yaml
-tests:
-  - it: should match snapshot with values-ci.yaml
-    asserts:
-      - matchSnapshot: {}

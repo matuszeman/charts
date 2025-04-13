@@ -1,38 +1,14 @@
 global:
-  cluster: prod-ec1
+  cluster: test
 
-  settings:
-    clusters:
-      dev-ec1:
-        awsRegion: eu-central-1
-        domains:
-          matuszeman.dev: stage.matuszeman.dev
-      #    nodeSelector:
-      #      environment: dev-ec1
-      #    tolerations:
-      #      - key: environment
-      #        operator: Equal
-      #        value: dev-ec1
-      #        effect: NoSchedule
-      prod-ec1:
-        awsRegion: eu-central-1
-        domains:
-          matuszeman.dev: matuszeman.dev
-
-    imageRepositories:
-      private: 1234567890.dkr.ecr.eu-central-1.amazonaws.com
-      public: public.ecr.aws/abcd1245
-      dockerhub: "docker.io"
-
-    defaults:
-      imageRepository: private
-      imagePullPolicy: IfNotPresent
+  appVersion: 0.1.0
 
 appName: app-name
-appVersion: 0.1.0
+appVersion: "{{ .Values.global.appVersion }}"
 resourceNameSuffix: "resource-suffix"
 
 service:
+  enabled: true
   port: 80
   targetPort: apache
   additionalPorts:
@@ -40,20 +16,62 @@ service:
       port: 9000
       targetPort: anotherport
 
+deployment:
+  enabled: true
+#  kind: StatefulSet
+#  multi:
+#    one: {}
+#    two:
+#      containers:
+#        app:
+#          command: [twocommand]
+
+job:
+  enabled: false
+
+cronjob:
+  enabled: false
+  # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax
+  schedule: "@hourly"
+
 configs:
   app:
     content:
       file1: file1 content
       plaintextkey: sometext
+  scripts:
+    # Octal are translated to decimal
+    # https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/#set-posix-permissions-for-secret-keys
+    defaultMode: 0777
+    content:
+      script.sh: |
+        #!/bin/sh
+        echo Works
   app-secrets:
+    defaultMode: 0400
     awsSecret:
       arn: arn:aws:iam::123456789012:role/external-secrets
       versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+  app-secrets-manual:
+    awsSecret:
+      arn: arn:aws:iam::123456789012:role/external-secrets-manual
+      updateHash: 1234
   php:
     content:
       php.ini: |
         memory_limit = 256M
         max_execution_time = 180
+  not-mounted-as-volume-in-pod:
+    content:
+      nothing: none
+  hashed-cm:
+    hashSuffix: true
+    content:
+      some: value
+  hashed-aws-secret:
+    hashSuffix: true
+    awsSecret:
+      arn: arn:aws:iam::123456789012:role/external-secrets
   not-managed-cm:
     fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
   not-managed-secret:
@@ -63,11 +81,28 @@ volumes:
   ephemeral-app-cache:
     emptyDir:
       sizeLimit: 10Mi
+  some-files:
+    persistentVolumeClaim:
+      claimName: pvc-files
+
+#nodeCapacity:
+#  type: OnDemand
+#
+#topologySpreadConstraints:
+#  zone: false
+#  node: false
+
+#terminationGracePeriodSeconds: 60
 
 containers:
   app:
     image: test-server
     imageTag: 0.1.0
+    command:
+      - customcmdquoted
+    args:
+      - --quoted=arg1
+      - --quoted arg2
     containerPort: 9000
     additionalPorts:
       - name: anotherport
@@ -76,6 +111,11 @@ containers:
     configDirs:
       app: /app-config
       app-secrets: /app-secrets
+      app-secrets-manual: /app-secrets-manual
+      not-managed-secret: /not-managed-secret
+      scripts: /scripts
+      hashed-cm: /hashed-cm
+      hashed-aws-secret: /hashed-aws-secret
 
     configFiles:
       php:
@@ -104,6 +144,10 @@ containers:
         port: app
       failureThreshold: 30
       periodSeconds: 10
+    lifecycle:
+      preStop:
+        exec:
+          command: ["/bin/sh", "-c", "echo 'preStop hook'"]
 
     env:
       stringValue: string
@@ -149,6 +193,16 @@ containers:
       ephemeral-app-cache:
         mountPath: /app/public/var
 
+    volumeFiles:
+      some-files:
+        readonly-by-default.yaml:
+          mountPath: /app/public/readonly-by-default.yaml
+        readonly.yaml:
+          mountPath: /app/public/readonly.yaml
+        writable.yaml:
+          mountPath: /app/public/writable.yaml
+          readOnly: false
+
   apache:
     image: idp-example-web-app-apache
     imageTag: 0.1.0
@@ -168,7 +222,16 @@ containers:
       httpGet:
         path: /
         port: apache
-
+  logging:
+    image: logging
+    imageTag: 1.0.0
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
 affinity:
   podAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -198,10 +261,16 @@ autoscaling:
   enabled: true
   maxReplicas: 10
 
+prometheus:
+  port: prometheus-exporter
+  path: /metrics
+  serviceMonitor:
+    enabled: true
+
 ingress:
   enabled: true
   external: true
-  domain: matuszeman.dev
+  domain: example.com
   host: test
   path: /somepath
   rewriteTarget: /api
@@ -215,5 +284,5 @@ ingress:
 
 serviceAccount:
   awsRoleArn: arn:aws:iam::123456789012:role/test-role
-  #create: true # default value
+  create: true
   #name: test-service-account

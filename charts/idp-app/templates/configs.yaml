@@ -1,0 +1,82 @@
+{{- $cluster := required "cluster does not exist in cluster list" (index .Values.global.idpAppConfig.clusters .Values.global.cluster) }}
+{{- if not .Values.debug -}}
+{{- $secretStore := false }}
+{{- range $configKey, $configSpec := .Values.configs }}
+{{- if or .fromSecret .fromConfigMap }}
+{{- else if .awsSecret }}
+{{- $secretStore = true }}
+{{- with .awsSecret }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: {{ include "idp-app.configName" (list $ $configKey) }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  {{ $annotations := merge (dict) (default $configSpec.annotations dict) (dict "update-hash" .updateHash) }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  refreshInterval: {{ default "0" .refreshInterval | quote }}
+  secretStoreRef:
+    name: {{ include "idp-app.fullname" $ }}-config-secretsmanager
+    kind: SecretStore
+  target:
+    name: {{ include "idp-app.configName" (list $ $configKey) }}
+    creationPolicy: Owner
+    template:
+      engineVersion: "v2"
+      metadata:
+        labels:
+          {{- include "idp-app.labels" $ | nindent 10 }}
+  dataFrom:
+    - extract:
+        conversionStrategy: Default
+        decodingStrategy: None
+        metadataPolicy: None
+        key: {{ required (printf "configs.%s.awsSecret.arn required" $configKey) .arn }}
+        {{- with .versionId }}
+        version: uuid/{{ . | toString }}
+        {{- end }}
+{{- end }}
+{{- else }}
+{{- $_ := required (printf "configs.%s.content required (or set .fromSecret, .fromConfigMap)" $configKey) .content }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "idp-app.configName" (list $ $configKey) }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  {{- with $configSpec.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+{{- range $contentKey, $v := $configSpec.content }}
+  {{ $contentKey }}:
+{{- toYaml (required (printf "configs.%s.content.%s required" $configKey $contentKey ) $v) | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if $secretStore }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: {{ include "idp-app.fullname" $ }}-config-secretsmanager
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: {{ required "$cluster.aws_region required" $cluster.aws_region }}
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: {{ include "idp-app.serviceAccountName" $ }}
+{{- end }}
+{{- end }}

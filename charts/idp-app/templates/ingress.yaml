@@ -1,0 +1,112 @@
+{{- if not $.Values.debug -}}
+{{- $ingresses := merge (dict "" $.Values.ingress) $.Values.ingresses }}
+{{- range $ingressKey, $ingressSpec := $ingresses }}
+{{- $ingress := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.ingress) $ingressSpec }}
+{{- if $ingress.enabled -}}
+{{- if not $.Values.service.enabled }}
+{{- fail "ingress: service must be enabled" }}
+{{- end }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+{{- $ingressName := join "-" (compact (list $deploymentName $ingressKey)) }}
+{{- $cluster := required "cluster does not exist in cluster list" (index $.Values.global.idpAppConfig.clusters $.Values.global.cluster) }}
+{{- $domain := required "domain does not exist in global.idpAppConfig.cluster.CLUSTER.domains" (index (required "$cluster.domains required" $cluster.domains) (required "ingress.domain required" $ingress.domain)) }}
+{{- $host := (printf "%s.%s" $ingress.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- $ingressClassName := ternary "nginx-external" "nginx-internal" $ingress.external }}
+{{- $svcPort := hasKey $ingress "fcgi" | ternary "fcgi" "http" }}
+{{- $fcgiConfigMapName := printf "%s-ingress-fcgi" $ingressName }}
+{{- if eq $svcPort "fcgi" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fcgiConfigMapName }}
+data:
+  SCRIPT_FILENAME: {{ required "fcgi.documentRoot required" $ingress.fcgi.documentRoot }}$fastcgi_script_name
+---
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $ingressName }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ $ingress.certManagerClusterIssuer }}
+    {{- if eq $svcPort "fcgi" }}
+    nginx.ingress.kubernetes.io/backend-protocol: "FCGI"
+    nginx.ingress.kubernetes.io/fastcgi-index: index.php
+    nginx.ingress.kubernetes.io/fastcgi-params-configmap: {{ $fcgiConfigMapName }}
+    {{- end }}
+    {{- if $ingress.basicAuth.enabled }}
+    # https://kubernetes.github.io/ingress-nginx/examples/auth/basic/
+    nginx.ingress.kubernetes.io/auth-type: basic
+    # name of the secret that contains the user/password definitions
+    nginx.ingress.kubernetes.io/auth-secret: {{ required "ingress.basicAuth.secretName required" $ingress.basicAuth.secretName }}
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
+    {{- end }}
+    {{- if $ingress.oauth2ProxyAuth.enabled }}
+    {{- $_ := required "ingress.oauth2ProxyAuth.path required" $ingress.oauth2ProxyAuth.path }}
+    {{- $authUrl       := ternary (printf "https://$host%s" $ingress.oauth2ProxyAuth.path) (printf "%s%s" $ingress.oauth2ProxyAuth.url $ingress.oauth2ProxyAuth.path) (empty $ingress.oauth2ProxyAuth.url) }}
+    {{- $authSigninUrl := ternary (printf "https://$host%s" $ingress.oauth2ProxyAuth.path) (printf "%s%s" (default $ingress.oauth2ProxyAuth.url $ingress.oauth2ProxyAuth.urlExternal) $ingress.oauth2ProxyAuth.path) (empty $ingress.oauth2ProxyAuth.url) }}
+    nginx.ingress.kubernetes.io/auth-url: "{{ $authUrl }}/auth{{ if $ingress.oauth2ProxyAuth.allowedGroups }}?allowed_groups={{ join "," (required "ingress.oauth2ProxyAuth.allowedGroups required" $ingress.oauth2ProxyAuth.allowedGroups) }}{{ end }}"
+    nginx.ingress.kubernetes.io/auth-signin: "{{ $authSigninUrl }}/start?rd=https://$host$request_uri"
+    nginx.ingress.kubernetes.io/auth-response-headers: {{ join "," $ingress.oauth2ProxyAuth.responseHeaders | quote}}
+    # Set X-Forwarded-Host to auth request headers so this host appears in oauth2proxy logs
+    nginx.ingress.kubernetes.io/auth-snippet: |
+      proxy_set_header X-Forwarded-Host {{ $host }};
+    {{- end }}
+    {{- if $ingress.rewriteTarget }}
+    nginx.ingress.kubernetes.io/rewrite-target: {{ $ingress.rewriteTarget }}/$2
+    {{- end }}
+    nginx.ingress.kubernetes.io/enable-access-log: {{ toString $ingress.accessLog.enabled | quote }}
+    {{- if $ingress.annotations }}
+    {{- toYaml $ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ $ingressClassName }}
+  tls:
+    - hosts:
+        - {{ $host | quote }}
+      secretName: {{ $ingressName }}-ingress-tls
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: {{ $ingress.path }}{{ if $ingress.rewriteTarget }}(/|$)(.*){{ end }}
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ $deploymentName }}
+                port:
+                  name: app
+---
+{{- if and $ingress.oauth2ProxyAuth.enabled (empty $ingress.oauth2ProxyAuth.url) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $ingressName }}-oauth2-proxy
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+spec:
+  ingressClassName: {{ $ingressClassName }}
+  tls:
+    - hosts:
+        - {{ $host | quote }}
+      secretName: {{ $ingressName }}-ingress-tls
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: {{ required "ingress.oauth2ProxyAuth.path required" $ingress.oauth2ProxyAuth.path | quote }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ required "ingress.oauth2ProxyAuth.service.name required" $ingress.oauth2ProxyAuth.service.name }}
+                port:
+                  number: {{ required "ingress.oauth2ProxyAuth.service.port required" $ingress.oauth2ProxyAuth.service.port }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

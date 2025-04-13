@@ -1,0 +1,34 @@
+{{- if not $.Values.debug -}}
+{{- if $.Values.cronjob.enabled }}
+{{- $deployments := (dict "" dict) }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  {{- with $.Values.cronjob.annotations }}
+  annotations:
+    {{- toYaml $.Values.cronjob.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ required "cronjob.schedule required" $.Values.cronjob.schedule | quote }}
+  concurrencyPolicy: {{ $.Values.cronjob.concurrencyPolicy | required "cronjob.concurrencyPolicy required" | quote }}
+  {{- if $.Values.cronjob.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ $.Values.cronjob.startingDeadlineSeconds }}
+  {{- end }}
+  successfulJobsHistoryLimit: {{ $.Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $.Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "idp-app.labels" $ | nindent 8 }}
+    spec:
+      template:
+        {{- include "idp-app.podTemplate" (list $ $deploymentKey $deployment ) | nindent 8 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
