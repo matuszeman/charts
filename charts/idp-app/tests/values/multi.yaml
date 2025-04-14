@@ -1,0 +1,9 @@
+deployment:
+  multi:
+    one: {}
+    two: {}
+
+ingress:
+  enabled: true
+  domain: example.com
+  host: __DEPLOYMENT_ID__

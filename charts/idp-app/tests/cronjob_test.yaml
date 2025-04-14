@@ -1,0 +1,56 @@
+suite: cronjob
+templates:
+  - cronjob.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: when cronjob enabled
+    values:
+      - values/cronjob.yaml
+    asserts:
+      - matchSnapshot: { }
+  - it: default restartPolicy
+    values:
+      - values/cronjob.yaml
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: OnFailure
+  - it: when restartPolicy is set
+    values:
+      - values/cronjob.yaml
+    set:
+      restartPolicy: Always
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: Always
+  - it: when spec params are set
+    values:
+      - values/cronjob.yaml
+    set:
+      cronjob:
+        concurrencyPolicy: "Forbid"
+        startingDeadlineSeconds: 30
+        failedJobsHistoryLimit: 10
+        successfulJobsHistoryLimit: 5
+    asserts:
+      - isSubset:
+          path: spec
+          content:
+            concurrencyPolicy: "Forbid"
+            startingDeadlineSeconds: 30
+            failedJobsHistoryLimit: 10
+            successfulJobsHistoryLimit: 5
+  - it: when annotations are set
+    values:
+      - values/cronjob.yaml
+    set:
+      cronjob:
+        annotations:
+          some: annot
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            some: annot

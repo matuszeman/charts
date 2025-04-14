@@ -1,0 +1,11 @@
+suite: all - minimum values
+values:
+  - ./values/minimum.yaml
+templates:
+  - deployment.yaml
+  - pdb.yaml
+  - service.yaml
+tests:
+  - it: should match snapshot with values/minimum.yaml
+    asserts:
+      - matchSnapshot: {}

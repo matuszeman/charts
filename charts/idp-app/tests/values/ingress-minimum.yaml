@@ -1,0 +1,4 @@
+ingress:
+  enabled: true
+  domain: example.com
+  host: testapp

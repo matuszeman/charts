@@ -1,0 +1,268 @@
+suite: configs
+templates:
+  - configs.yaml
+  - deployment.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    values:
+      - ../values-ci.yaml
+    asserts:
+      - matchSnapshot: {}
+  - it: when fromConfigMap is specified, then do not generate managed ConfigMap and generate deployment volume
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          configDirs:
+            not-managed-cm: /app-config
+      configs:
+        not-managed-cm:
+          fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-not-managed-cm
+            configMap:
+              name: RELEASE-NAME-not-managed-cm
+        template: deployment.yaml
+
+  - it: when config is specified and IS NOT used in container in as configFiles, then DO NOT generate deployment volume
+    values:
+      - values/deployment.yaml
+    set:
+#      containers:
+#        app:
+#          configFiles:
+#            myconfig:
+#              yes: /yes
+      configs:
+        myconfig:
+          content:
+            yes: no
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes
+          value: null
+        template: deployment.yaml
+  - it: when config is specified and IS used in container, then DO generate deployment volume
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          configDirs:
+            dirconfig: /config
+          configFiles:
+            fileconfig:
+              yes: /yes
+      configs:
+        dirconfig:
+          content:
+            yes: no
+        fileconfig:
+          content:
+            yes: no
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          any: true
+          content:
+            name: config-fileconfig
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          any: true
+          content:
+            name: config-dirconfig
+        template: deployment.yaml
+
+  - it: when fromConfigMap and content is specified, then do not generate managed ConfigMap (prefer fromConfigMap)
+    values:
+      - values/deployment.yaml
+    set:
+      configs:
+        not-managed-cm:
+          fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
+          content:
+            example.txt: example content
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+  - it: when fromSecret is specified, then do not generate managed Secret, generate deployment volume
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          configDirs:
+            not-managed-secret: /app-config
+      configs:
+        not-managed-secret:
+          fromSecret: "{{ .Release.Name }}-not-managed-secret"
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-not-managed-secret
+            secret:
+              secretName: RELEASE-NAME-not-managed-secret
+        template: deployment.yaml
+  - it: when fromSecret and content is specified, then do not generate managed Secret (prefer fromSecret)
+    set:
+      configs:
+        not-managed-secret:
+          fromSecret: "{{ .Release.Name }}-not-managed-secret"
+          content:
+            example.txt: example content
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+  - it: when awsSecret is specified, then generate SecretStore and ExternalSecret
+    set:
+      configs:
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+            refreshInterval: 1h
+          content:
+            example.txt: example content
+    asserts:
+      - matchSnapshot:
+          template: configs.yaml
+  - it: when awsSecret with versionId is specified, then set it to externalsecret
+    set:
+      configs:
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+            versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+    asserts:
+      - equal:
+          path: spec.dataFrom[0].extract.version
+          value: uuid/a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+        template: configs.yaml
+        documentIndex: 0
+  - it: when awsSecret and updateHash, then generate ExternalSecret annotation
+    set:
+      configs:
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets-manual
+            updateHash: 1234
+    asserts:
+      - equal:
+          path: metadata.annotations.update-hash
+          value: 1234
+        template: configs.yaml
+        documentIndex: 0
+  - it: when updateHash and restartPodOnUpdate, then generate Deployment pod with config annotation
+    values:
+      - values/deployment.yaml
+    set:
+      podAnnotations:
+        test: me
+      configs:
+        # this should not exist in annotations
+        cm-default-do-not-restart:
+          content:
+            some: data
+        cm-do-not-restart:
+          restartPodOnUpdate: false
+          content:
+            some: data
+        # below should be added to annotations
+        cm:
+          restartPodOnUpdate: true
+          content:
+            some: data
+        aws-secret:
+          restartPodOnUpdate: true
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets-manual
+            updateHash: 1234
+        aws-secret-versioned:
+          restartPodOnUpdate: true
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets-versioned
+            versionId: versionXYZ
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            config-aws-secret-hash: a9d52bd
+            config-aws-secret-versioned-hash: 2caaeb3
+            config-cm-hash: c67cdc2
+            test: me
+        template: deployment.yaml
+        documentIndex: 0
+  - it: when aws secret with annotations
+    set:
+      configs:
+        aws-secret:
+          annotations:
+            some: annotation
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            some: annotation
+        template: configs.yaml
+        documentIndex: 0
+  - it: when aws secret with annotations and updateHash
+    set:
+      configs:
+        aws-secret:
+          annotations:
+            some: annotation
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+            updateHash: now
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            some: annotation
+            update-hash: now
+        template: configs.yaml
+        documentIndex: 0
+  - it: when cm with annotations
+    set:
+      configs:
+        cm:
+          annotations:
+            some: annotation
+          content:
+            data: 123
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            some: annotation
+        template: configs.yaml
+        documentIndex: 0
+  - it: when awsSecret with no versionId is specified, then do not set it to externalsecret
+    set:
+      configs:
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+            #versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+    asserts:
+      - notExists:
+          path: spec.dataFrom[0].extract.version
+        template: configs.yaml
+        documentIndex: 0
