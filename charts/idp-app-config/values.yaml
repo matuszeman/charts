@@ -1,0 +1,45 @@
+global:
+  idpAppConfig:
+    imageRepositories:
+      docker.io: "docker.io"
+      quay.io: "quay.io"
+
+    clusters:
+      test:
+        #aws_region: eu-central-1
+        domains:
+          example.com: example.com
+        nodeSelector: {}
+        tolerations: {}
+
+    defaults:
+      imageRepository: docker.io
+      imagePullPolicy: IfNotPresent
+      ingress:
+        enabled: false
+        className: traefik-private
+        certManagerClusterIssuer: letsencrypt
+        #  fcgi:
+        #    documentRoot: /html
+        path: /
+        #rewriteTarget: /api
+        annotations: { }
+        basicAuth:
+          enabled: false
+          secretName:
+        oauth2ProxyAuth:
+          enabled: false
+          url: null
+          # overwrites url for signin url when specified
+          urlExternal: null
+          # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
+          allowedGroups: null # []
+          responseHeaders:
+            - Auth-Proxy-Email
+            - Auth-Proxy-Groups
+          path: /oauth2
+          service:
+            name: null
+            port: 80
+        accessLog:
+          enabled: true
