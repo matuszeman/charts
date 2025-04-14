@@ -1,0 +1,38 @@
+suite: prometheus-service-monitor
+templates:
+  - prometheus-service-monitor.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: when prometheus serviceMonitor is enabled but not service
+    set:
+      prometheus:
+        serviceMonitor:
+          enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "prometheus.serviceMonitor: service must be enabled"
+  - it: snapshot
+    values:
+      - values/service.yaml
+      - values/deployment.yaml
+      - values/prometheus.yaml
+    asserts:
+      - matchSnapshot: { }
+  - it: when multi deployment
+    values:
+      - values/service.yaml
+      - values/deployment.yaml
+      - values/prometheus.yaml
+      - values/multi.yaml
+    asserts:
+      - matchSnapshot: { }
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-one
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-two
+        documentIndex: 1
+

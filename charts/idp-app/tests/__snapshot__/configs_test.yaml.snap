@@ -1,0 +1,512 @@
+should match snapshot with values-ci.yaml:
+  1: |
+    apiVersion: v1
+    data:
+      file1: file1 content
+      plaintextkey: sometext
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-app
+  2: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-app-secrets
+    spec:
+      dataFrom:
+        - extract:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: arn:aws:iam::123456789012:role/external-secrets
+            metadataPolicy: None
+            version: uuid/a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
+      refreshInterval: "0"
+      secretStoreRef:
+        kind: SecretStore
+        name: RELEASE-NAME-resource-suffix-config-secretsmanager
+      target:
+        creationPolicy: Owner
+        name: RELEASE-NAME-resource-suffix-config-app-secrets
+        template:
+          engineVersion: v2
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/version: 0.1.0
+  3: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      annotations:
+        update-hash: 1234
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-app-secrets-manual
+    spec:
+      dataFrom:
+        - extract:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: arn:aws:iam::123456789012:role/external-secrets-manual
+            metadataPolicy: None
+      refreshInterval: "0"
+      secretStoreRef:
+        kind: SecretStore
+        name: RELEASE-NAME-resource-suffix-config-secretsmanager
+      target:
+        creationPolicy: Owner
+        name: RELEASE-NAME-resource-suffix-config-app-secrets-manual
+        template:
+          engineVersion: v2
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/version: 0.1.0
+  4: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-22aa808
+    spec:
+      dataFrom:
+        - extract:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: arn:aws:iam::123456789012:role/external-secrets
+            metadataPolicy: None
+      refreshInterval: "0"
+      secretStoreRef:
+        kind: SecretStore
+        name: RELEASE-NAME-resource-suffix-config-secretsmanager
+      target:
+        creationPolicy: Owner
+        name: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-22aa808
+        template:
+          engineVersion: v2
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/version: 0.1.0
+  5: |
+    apiVersion: v1
+    data:
+      some: value
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-hashed-cm-7c78049
+  6: |
+    apiVersion: v1
+    data:
+      nothing: none
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-not-mounted-as-volume-in-pod
+  7: |
+    apiVersion: v1
+    data:
+      php.ini: |
+        memory_limit = 256M
+        max_execution_time = 180
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-php
+  8: |
+    apiVersion: v1
+    data:
+      script.sh: |
+        #!/bin/sh
+        echo Works
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-scripts
+  9: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: SecretStore
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix-config-secretsmanager
+    spec:
+      provider:
+        aws:
+          auth:
+            jwt:
+              serviceAccountRef:
+                name: RELEASE-NAME-resource-suffix
+          region: eu-central-1
+          service: SecretsManager
+  10: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-resource-suffix
+    spec:
+      revisionHistoryLimit: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+          app.kubernetes.io/name: app-name
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+            app.kubernetes.io/name: app-name
+        spec:
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: security
+                        operator: In
+                        values:
+                          - S1
+                  topologyKey: topology.kubernetes.io/zone
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                      matchExpressions:
+                        - key: security
+                          operator: In
+                          values:
+                            - S2
+                    topologyKey: topology.kubernetes.io/zone
+                  weight: 100
+          containers:
+            - image: 123456.dkr.ecr.eu-central-1.amazonaws.com/idp-example-web-app-apache:0.1.0
+              imagePullPolicy: IfNotPresent
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: apache
+              name: apache
+              ports:
+                - containerPort: 80
+                  name: apache
+                  protocol: TCP
+              readinessProbe:
+                httpGet:
+                  path: /
+                  port: apache
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+            - args:
+                - --quoted=arg1
+                - --quoted arg2
+              command:
+                - customcmdquoted
+              env:
+                - name: configFromAwsSecret
+                  valueFrom:
+                    secretKeyRef:
+                      key: somekey
+                      name: RELEASE-NAME-resource-suffix-config-app-secrets
+                - name: configFromConfigContent
+                  valueFrom:
+                    configMapKeyRef:
+                      key: plaintextkey
+                      name: RELEASE-NAME-resource-suffix-config-app
+                - name: configFromConfigMap
+                  valueFrom:
+                    configMapKeyRef:
+                      key: somekey
+                      name: RELEASE-NAME-not-managed-cm
+                - name: configFromSecret
+                  valueFrom:
+                    secretKeyRef:
+                      key: somekey
+                      name: RELEASE-NAME-not-managed-secret
+                - name: configKeyTemplatedValue
+                  valueFrom:
+                    configMapKeyRef:
+                      key: cm-key
+                      name: app-config-RELEASE-NAME
+                - name: configKeyValue
+                  valueFrom:
+                    configMapKeyRef:
+                      key: cm-key
+                      name: app-config
+                - name: floatValue
+                  value: "456.789"
+                - name: intValue
+                  value: "123"
+                - name: secretKeyTemplatedValue
+                  valueFrom:
+                    secretKeyRef:
+                      key: secret-key
+                      name: app-secrets-RELEASE-NAME
+                - name: secretKeyValue
+                  valueFrom:
+                    secretKeyRef:
+                      key: some-key
+                      name: app-secrets
+                - name: stringValue
+                  value: string
+                - name: templatedValue
+                  value: value-RELEASE-NAME
+              image: 123456.dkr.ecr.eu-central-1.amazonaws.com/test-server:0.1.0
+              imagePullPolicy: IfNotPresent
+              lifecycle:
+                preStop:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - echo 'preStop hook'
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: app
+              name: app
+              ports:
+                - containerPort: 9000
+                  name: app
+                  protocol: TCP
+                - containerPort: 9000
+                  name: anotherport
+              readinessProbe:
+                httpGet:
+                  path: /
+                  port: app
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+              startupProbe:
+                failureThreshold: 30
+                httpGet:
+                  path: /
+                  port: app
+                periodSeconds: 10
+              volumeMounts:
+                - mountPath: /app-config
+                  name: config-app
+                  readOnly: true
+                - mountPath: /app-secrets
+                  name: config-app-secrets
+                  readOnly: true
+                - mountPath: /app-secrets-manual
+                  name: config-app-secrets-manual
+                  readOnly: true
+                - mountPath: /hashed-aws-secret
+                  name: config-hashed-aws-secret
+                  readOnly: true
+                - mountPath: /hashed-cm
+                  name: config-hashed-cm
+                  readOnly: true
+                - mountPath: /not-managed-secret
+                  name: config-not-managed-secret
+                  readOnly: true
+                - mountPath: /scripts
+                  name: config-scripts
+                  readOnly: true
+                - mountPath: /tmp/example.txt
+                  name: config-not-managed-cm
+                  readOnly: true
+                  subPath: example.txt
+                - mountPath: /etc/php.ini
+                  name: config-php
+                  readOnly: true
+                  subPath: php.ini
+                - mountPath: /app/public/var
+                  name: ephemeral-app-cache
+                  readOnly: false
+                - mountPath: /app/public/readonly-by-default.yaml
+                  name: some-files
+                  readOnly: true
+                  subPath: readonly-by-default.yaml
+                - mountPath: /app/public/readonly.yaml
+                  name: some-files
+                  readOnly: true
+                  subPath: readonly.yaml
+                - mountPath: /app/public/writable.yaml
+                  name: some-files
+                  readOnly: false
+                  subPath: writable.yaml
+            - image: 123456.dkr.ecr.eu-central-1.amazonaws.com/logging:1.0.0
+              imagePullPolicy: IfNotPresent
+              name: logging
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+          enableServiceLinks: false
+          nodeSelector:
+            environment: test
+          securityContext:
+            sysctls:
+              - name: net.ipv4.ip_unprivileged_port_start
+                value: "0"
+          serviceAccountName: RELEASE-NAME-resource-suffix
+          tolerations:
+            - effect: NoSchedule
+              key: environment
+              operator: Equal
+              value: test
+          topologySpreadConstraints:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+                  app.kubernetes.io/name: app-name
+              maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+                  app.kubernetes.io/name: app-name
+              maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+          volumes:
+            - configMap:
+                name: RELEASE-NAME-resource-suffix-config-app
+              name: config-app
+            - name: config-app-secrets
+              secret:
+                defaultMode: 256
+                secretName: RELEASE-NAME-resource-suffix-config-app-secrets
+            - name: config-app-secrets-manual
+              secret:
+                secretName: RELEASE-NAME-resource-suffix-config-app-secrets-manual
+            - name: config-hashed-aws-secret
+              secret:
+                secretName: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-22aa808
+            - configMap:
+                name: RELEASE-NAME-resource-suffix-config-hashed-cm-7c78049
+              name: config-hashed-cm
+            - configMap:
+                name: RELEASE-NAME-not-managed-cm
+              name: config-not-managed-cm
+            - name: config-not-managed-secret
+              secret:
+                secretName: RELEASE-NAME-not-managed-secret
+            - configMap:
+                name: RELEASE-NAME-resource-suffix-config-php
+              name: config-php
+            - configMap:
+                defaultMode: 511
+                name: RELEASE-NAME-resource-suffix-config-scripts
+              name: config-scripts
+            - emptyDir:
+                sizeLimit: 10Mi
+              name: ephemeral-app-cache
+            - name: some-files
+              persistentVolumeClaim:
+                claimName: pvc-files
+when awsSecret is specified, then generate SecretStore and ExternalSecret:
+  1: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-config-aws-secrets
+    spec:
+      dataFrom:
+        - extract:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: arn:aws:iam::123456789012:role/external-secrets
+            metadataPolicy: None
+      refreshInterval: 1h
+      secretStoreRef:
+        kind: SecretStore
+        name: RELEASE-NAME-config-secretsmanager
+      target:
+        creationPolicy: Owner
+        name: RELEASE-NAME-config-aws-secrets
+        template:
+          engineVersion: v2
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/version: 0.1.0
+  2: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: SecretStore
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-config-secretsmanager
+    spec:
+      provider:
+        aws:
+          auth:
+            jwt:
+              serviceAccountRef:
+                name: RELEASE-NAME
+          region: eu-central-1
+          service: SecretsManager

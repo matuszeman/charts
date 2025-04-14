@@ -1,0 +1,22 @@
+deployment:
+  enabled: true
+
+containers:
+  app:
+    image: test-server
+    imageTag: 0.1.0
+    containerPort: 80
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    livenessProbe:
+      httpGet:
+        path: /
+        port: app
+    readinessProbe:
+      httpGet:
+        path: /
+        port: app
+

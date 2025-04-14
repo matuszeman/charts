@@ -1,0 +1,295 @@
+suite: deployment
+templates:
+  - deployment.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    values:
+      - ../values-ci.yaml
+    set:
+      containers:
+        app:
+          imageRepository: private
+    asserts:
+      - matchSnapshot: {}
+  - it: when nodoCapacity.type = OnDemand
+    values:
+      - values/deployment.yaml
+    set:
+      nodeCapacity:
+        type: OnDemand
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector.capacity
+          value: on-demand
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            effect: NoSchedule
+            key: capacity
+            operator: Equal
+            value: on-demand
+  - it: when terminationGracePeriodSeconds is set
+    values:
+      - values/deployment.yaml
+    set:
+      terminationGracePeriodSeconds: 120
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 120
+  - it: can set nodeSelector manually
+    values:
+      - values/deployment.yaml
+    set:
+      nodeSelector:
+        karpenter.k8s.aws/instance-category: c
+    asserts:
+      - isSubset:
+          path: spec.template.spec.nodeSelector
+          content:
+            karpenter.k8s.aws/instance-category: c
+  - it: private image repo is default
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          image: test-image
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: 123456.dkr.ecr.eu-central-1.amazonaws.com/test-image:0.1.0
+  - it: public image repo
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          image: public-image
+          imageRepository: public
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: public.ecr.aws/123456/public-image:0.1.0
+  - it: deployment strategy Recreate
+    values:
+      - values/deployment.yaml
+    set:
+      deployment:
+        strategy:
+          type: Recreate
+    asserts:
+      - equal:
+          path: spec.strategy
+          value:
+            type: Recreate
+  - it: when no deployment strategy is defined
+    values:
+      - values/deployment.yaml
+    set:
+      deployment:
+        strategy: null
+    asserts:
+      - notExists:
+          path: spec.strategy
+  - it: templated appVersion
+    values:
+      - values/deployment.yaml
+    set:
+      global:
+        appVersion: "VERSION"
+      appVersion: "{{ .Values.global.appVersion }}"
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/version"]
+          value: VERSION
+  - it: templated container imageTag
+    values:
+      - values/deployment.yaml
+    set:
+      global:
+        appVersion: "VERSION"
+      containers:
+        app:
+          imageTag: "{{ .Values.global.appVersion }}"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: 123456.dkr.ecr.eu-central-1.amazonaws.com/test-server:VERSION
+  - it: dockerhub image repo
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          image: username/image
+          imageRepository: docker.io
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/username/image:0.1.0
+  - it: command and args
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          command:
+            - customcmd
+            - 567
+          args:
+            - 123
+            - string
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value:
+            - customcmd
+            - "567"  # commands are quoted
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - "123" # args are quoted
+            - string
+  - it: when another non app container is provided, then it does not have to provide containerPort
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        logging:
+          image: logging
+          imageTag: 1.0.0
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: logging
+
+  - it: when resources.limits are defined
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+              ephemeralStorage: 100Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits
+          value:
+            cpu: 200m
+            memory: 200Mi
+            ephemeral-storage: 100Mi
+
+  - it: when resources.requests.ephemeralStorage is defined
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          resources:
+            requests:
+              ephemeralStorage: 50Mi
+    asserts:
+      - isSubset:
+          path: spec.template.spec.containers[0].resources.requests
+          content:
+            ephemeral-storage: 50Mi
+
+  - it: when multi deployment
+    values:
+      - values/deployment.yaml
+      - values/multi.yaml
+
+    asserts:
+      - matchSnapshot: {}
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-one
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-two
+        documentIndex: 1
+
+  - it: when multi deployment with containers override
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          command: ["command", "original"]
+      deployment:
+        multi:
+          one: {}
+          two:
+            containers:
+              app:
+                command: ["command", "override"]
+
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["command", "original"]
+        documentIndex: 0
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["command", "override"]
+        documentIndex: 1
+
+  - it: when containerPortProtocol is defined
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          containerPortProtocol: UDP
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].protocol
+          value: UDP
+  - it: when deployment.kind is StatefulSet
+    values:
+      - values/deployment.yaml
+      - values/statefulset.yaml
+    asserts:
+      - equal:
+          path: kind
+          value: StatefulSet
+  - it: default restartPolicy is undefined
+    values:
+      - values/deployment.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.restartPolicy
+  - it: when annotations are set
+    values:
+      - values/deployment.yaml
+    set:
+      deployment:
+        annotations:
+          some: annot
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            some: annot
+  - it: when enableServiceLinks are set to true, then do not render it as it's kube default
+    values:
+      - values/deployment.yaml
+    set:
+      enableServiceLinks: true
+    asserts:
+      - notExists:
+          path: spec.template.spec.enableServiceLinks

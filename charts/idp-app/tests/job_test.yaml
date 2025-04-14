@@ -1,0 +1,39 @@
+suite: job
+templates:
+  - job.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: when job enabled
+    values:
+      - values/job.yaml
+    asserts:
+      - matchSnapshot: { }
+  - it: default restartPolicy
+    values:
+      - values/job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: OnFailure
+  - it: when restartPolicy is set
+    values:
+      - values/job.yaml
+    set:
+      restartPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: Always
+  - it: when annotations are set
+    values:
+      - values/job.yaml
+    set:
+      job:
+        annotations:
+          some: annot
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            some: annot

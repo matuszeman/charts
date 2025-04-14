@@ -1,55 +1,3 @@
-global:
-  idpAppConfig:
-    imageRepositories:
-      dockerhub: "docker.io"
-      docker.io: "docker.io"
-      quay.io: "quay.io"
-
-    clusters:
-      test:
-        aws_region: eu-central-1
-        domains:
-          example.com: example.com
-        nodeSelector:
-          environment: test
-        tolerations:
-          - key: environment
-            operator: Equal
-            value: test
-            effect: NoSchedule
-
-    defaults:
-      imageRepository: private
-      imagePullPolicy: IfNotPresent
-      ingress:
-        enabled: false
-        #className: nginx-public
-        certManagerClusterIssuer: default
-        #  fcgi:
-        #    documentRoot: /html
-        path: /
-        #rewriteTarget: /api
-        annotations: { }
-        basicAuth:
-          enabled: false
-          secretName:
-        oauth2ProxyAuth:
-          enabled: false
-          url: null
-          # overwrites url for signin url when specified
-          urlExternal: null
-          # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
-          allowedGroups: null # []
-          responseHeaders:
-            - Auth-Proxy-Email
-            - Auth-Proxy-Groups
-          path: /oauth2
-          service:
-            name: null
-            port: 80
-        accessLog:
-          enabled: true
-
 appName:
 appVersion:
 # resourceNameSuffix used when two or more idp-apps are deployed in the same helm release
@@ -86,9 +34,9 @@ deployment:
   kind: Deployment
   annotations: {}
   revisionHistoryLimit: 1
-#  multi:
-#    one: {}
-#    two: {}
+  #  multi:
+  #    one: {}
+  #    two: {}
   # https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
 #  strategy:
 #    # RollingUpdate / Recreate
@@ -160,8 +108,8 @@ service:
   #targetPort: http
 
 prometheus:
-#  port: prometheus-exporter
-#  path: /metrics
+  #  port: prometheus-exporter
+  #  path: /metrics
   serviceMonitor:
     enabled: false
 

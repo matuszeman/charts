@@ -1,0 +1,54 @@
+global:
+  cluster: test
+
+  idpAppConfig:
+    imageRepositories:
+      private: 123456.dkr.ecr.eu-central-1.amazonaws.com
+      public: public.ecr.aws/123456
+      docker.io: "docker.io"
+    clusters:
+      test:
+        aws_region: eu-central-1
+        domains:
+          example.com: example.com
+        nodeSelector:
+          environment: test
+        tolerations:
+          - key: environment
+            operator: Equal
+            value: test
+            effect: NoSchedule
+    defaults:
+      imageRepository: private
+      imagePullPolicy: IfNotPresent
+      ingress:
+        enabled: false
+        className: nginx-internal
+        certManagerClusterIssuer: default
+        #  fcgi:
+        #    documentRoot: /html
+        path: /
+        #rewriteTarget: /api
+        annotations: { }
+        basicAuth:
+          enabled: false
+          secretName:
+        oauth2ProxyAuth:
+          enabled: false
+          url: null
+          # overwrites url for signin url when specified
+          urlExternal: null
+          # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
+          allowedGroups: null # []
+          responseHeaders:
+            - Auth-Proxy-Email
+            - Auth-Proxy-Groups
+          path: /oauth2
+          service:
+            name: null
+            port: 80
+        accessLog:
+          enabled: true
+
+appName: app-name
+appVersion: 0.1.0

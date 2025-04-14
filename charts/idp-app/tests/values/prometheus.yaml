@@ -1,0 +1,5 @@
+prometheus:
+  port: prometheus-exporter
+  path: /metrics
+  serviceMonitor:
+    enabled: true

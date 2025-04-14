@@ -1,0 +1,117 @@
+suite: ingress
+templates:
+  - ingress.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    values:
+      - ../values-ci.yaml
+    asserts:
+      - matchSnapshot: {}
+  - it: when ingress is enabled but not service
+    values:
+      - values/ingress-minimum.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress: service must be enabled"
+  - it: when multi deployment
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/multi.yaml
+    asserts:
+      - matchSnapshot: {}
+  - it: when ingress and ingresses are set
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-external
+        domain: example.com
+        host: testapp-default
+      ingresses:
+        external:
+          enabled: true
+          className: nginx-external
+          domain: example.com
+          host: testapp-external
+          oauth2ProxyAuth:
+            enabled: true
+            url: https://auth.example.com
+            allowedGroups:
+              - one@example.com
+        internal:
+          enabled: true
+          domain: example.com
+          host: testapp-internal
+          accessLog:
+            enabled: false
+          basicAuth:
+            enabled: true
+            secretName: basic-auth
+
+
+    asserts:
+      - matchSnapshot: { }
+  - it: can disable accessLog
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        accessLog:
+          enabled: false
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            nginx.ingress.kubernetes.io/enable-access-log: "false"
+  - it: when oauth2ProxyAuth is enabled on path
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        enabled: true
+        oauth2ProxyAuth:
+          enabled: true
+          service:
+            name: my-oauth2-proxy
+    asserts:
+      - matchSnapshot: {}
+  - it: when oauth2ProxyAuth is enabled on url
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        enabled: true
+        oauth2ProxyAuth:
+          enabled: true
+          url: https://auth.example.com
+          allowedGroups:
+            - one@example.com
+            - two@example.com
+    asserts:
+      - matchSnapshot: { }
+  - it: when oauth2ProxyAuth with externalUrl
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        enabled: true
+        oauth2ProxyAuth:
+          enabled: true
+          url: http://oauth2proxy.devsup.svc.cluster.local
+          urlExternal: https://auth.example.com
+
+    asserts:
+      - matchSnapshot: { }

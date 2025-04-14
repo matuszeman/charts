@@ -1,0 +1,24 @@
+job:
+  enabled: true
+
+containers:
+  app:
+    image: test-job
+    imageTag: 0.1.0
+    containerPort: 80
+
+    resources:
+      limits:
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    livenessProbe:
+      httpGet:
+        path: /
+        port: app
+    readinessProbe:
+      httpGet:
+        path: /
+        port: app
+

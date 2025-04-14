@@ -1,0 +1,26 @@
+suite: pdb
+templates:
+  - pdb.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot with values-ci.yaml
+    values:
+      - ../values-ci.yaml
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when multi deployment
+    values:
+      - values/deployment.yaml
+      - values/multi.yaml
+    asserts:
+      - matchSnapshot: {}
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-one
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-two
+        documentIndex: 1
