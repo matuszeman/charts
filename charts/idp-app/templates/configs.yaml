@@ -1,5 +1,5 @@
-{{- $cluster := required "cluster does not exist in cluster list" (index .Values.global.idpAppConfig.clusters .Values.global.cluster) }}
 {{- if not .Values.debug -}}
+{{- $cluster := required "cluster does not exist in cluster list" (index .Values.global.idpAppConfig.clusters .Values.global.cluster) }}
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- if or .fromSecret .fromConfigMap }}
