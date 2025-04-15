@@ -77,7 +77,6 @@ tests:
       - values/ingress-minimum.yaml
     set:
       ingress:
-        enabled: true
         oauth2ProxyAuth:
           enabled: true
           service:
@@ -91,7 +90,6 @@ tests:
       - values/ingress-minimum.yaml
     set:
       ingress:
-        enabled: true
         oauth2ProxyAuth:
           enabled: true
           url: https://auth.example.com
@@ -107,11 +105,47 @@ tests:
       - values/ingress-minimum.yaml
     set:
       ingress:
-        enabled: true
         oauth2ProxyAuth:
           enabled: true
           url: http://oauth2proxy.devsup.svc.cluster.local
           urlExternal: https://auth.example.com
-
     asserts:
       - matchSnapshot: { }
+  - it: when oauth2ProxyAuth with templated externalUrl, then $ global var is resolvable
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        oauth2ProxyAuth:
+          enabled: true
+          url: http://oauth2proxy.devsup.svc.cluster.local
+          urlExternal: https://auth.{{ $.Values.global.cluster }}.example.com
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            nginx.ingress.kubernetes.io/auth-signin: "https://auth.test.example.com/oauth2/start?rd=https://$host$request_uri"
+  - it: when oauth2ProxyAuth with templated externalUrl, then .cluster var is resolvable
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      global:
+        idpAppConfig:
+          clusters:
+            test:
+              oauth2ProxyAuth:
+                urlExternal: https://auth.test-222.example.com
+      ingress:
+        oauth2ProxyAuth:
+          enabled: true
+          url: http://oauth2proxy.devsup.svc.cluster.local
+          urlExternal: "{{ .cluster.oauth2ProxyAuth.urlExternal }}"
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            nginx.ingress.kubernetes.io/auth-signin: "https://auth.test-222.example.com/oauth2/start?rd=https://$host$request_uri"
