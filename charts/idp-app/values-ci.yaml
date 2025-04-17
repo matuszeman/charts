@@ -126,6 +126,10 @@ configs:
     fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
   not-managed-secret:
     fromSecret: "{{ .Release.Name }}-not-managed-secret"
+#  sealed-secret:
+#    sealedSecret:
+#      encryptedData:
+#        key1: encryptedvalue
 
 volumes:
   ephemeral-app-cache:
@@ -166,12 +170,15 @@ containers:
       scripts: /scripts
       hashed-cm: /hashed-cm
       hashed-aws-secret: /hashed-aws-secret
+#      sealed-secret: /sealed-secrets
 
     configFiles:
       php:
         php.ini: /etc/php.ini
       not-managed-cm:
         example.txt: /tmp/example.txt
+#      sealed-secret:
+#        key1: /tmp/secret.txt
 
     resources:
       limits:

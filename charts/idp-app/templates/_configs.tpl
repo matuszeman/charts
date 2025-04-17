@@ -15,6 +15,8 @@
 {{- if or $configSpec.fromSecret $configSpec.fromConfigMap }}
 {{- else if $configSpec.awsSecret }}
 {{- required "awsSecret.arn required" (cat $configSpec.awsSecret.arn $configSpec.awsSecret.versionId $configSpec.awsSecret.updateHash)  | sha256sum | trunc 7 }}
+{{- else if $configSpec.sealedSecret }}
+{{- required "sealedSecret.encryptedData required" (cat $configSpec.sealedSecret.encryptedData) | sha256sum | trunc 7 }}
 {{- else if $configSpec.content }}
 {{- toJson $configSpec.content | sha256sum | trunc 7 }}
 {{- end }}
