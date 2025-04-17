@@ -3,6 +3,38 @@
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- if or .fromSecret .fromConfigMap }}
+{{- else if .sealedSecret }}
+{{- with .sealedSecret }}
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: {{ include "idp-app.configName" (list $ $configKey) }}
+  annotations:
+    {{- with .scope }}
+    sealedsecrets.bitnami.com/{{ . }}: "true"
+    {{- end }}
+    {{- with $configSpec.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+spec:
+  encryptedData:
+    {{- toYaml (required ".sealedSecret.encryptedData required" .encryptedData) | nindent 4 }}
+  template:
+    metadata:
+      name: {{ include "idp-app.configName" (list $ $configKey) }}
+      annotations:
+        {{- with .scope }}
+        sealedsecrets.bitnami.com/{{ . }}: "true"
+        {{- end }}
+        {{- with $configSpec.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "idp-app.labels" $ | nindent 8 }}
+{{- end }}
 {{- else if .awsSecret }}
 {{- $secretStore = true }}
 {{- with .awsSecret }}

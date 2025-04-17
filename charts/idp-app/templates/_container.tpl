@@ -96,7 +96,7 @@ env:
     secretKeyRef:
       name: {{ tpl $config.fromSecret $ }}
       key: {{ $configRef.key }}
-    {{- else if $config.awsSecret }}
+    {{- else if or $config.awsSecret $config.sealedSecret }}
     secretKeyRef:
       name: {{ printf "%s-config-%s" (include "idp-app.fullname" $ ) $configRef.name }}
       key: {{ $configRef.key }}
@@ -105,7 +105,7 @@ env:
       name: {{ printf "%s-config-%s" (include "idp-app.fullname" $ ) $configRef.name }}
       key: {{ $configRef.key }}
     {{- else }}
-    {{- required ( printf "configs.%s does not specify fromConfigMap, fromSecret, awsSecret, nor content" $k ) nil }}
+    {{- required ( printf "configs.%s does not specify fromConfigMap, fromSecret, awsSecret, sealedSecret, nor content" $k ) nil }}
     {{- end }}
     {{- end }}
     {{- else }}
