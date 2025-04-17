@@ -10,13 +10,14 @@ apiVersion: bitnami.com/v1alpha1
 kind: SealedSecret
 metadata:
   name: {{ include "idp-app.configName" (list $ $configKey) }}
+  {{- $annotations := merge (dict) (default $configSpec.annotations dict) }}
+  {{- if .scope }}
+  {{- $annotations = merge $annotations (dict (printf "sealedsecrets.bitnami.com/%s" .scope ) "true")}}
+  {{- end }}
+  {{- with $annotations }}
   annotations:
-    {{- with .scope }}
-    sealedsecrets.bitnami.com/{{ . }}: "true"
-    {{- end }}
-    {{- with $configSpec.annotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
+  {{- end }}
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
 spec:
@@ -25,13 +26,10 @@ spec:
   template:
     metadata:
       name: {{ include "idp-app.configName" (list $ $configKey) }}
+      {{- with $annotations }}
       annotations:
-        {{- with .scope }}
-        sealedsecrets.bitnami.com/{{ . }}: "true"
-        {{- end }}
-        {{- with $configSpec.annotations }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
+      {{- end }}
       labels:
         {{- include "idp-app.labels" $ | nindent 8 }}
 {{- end }}
