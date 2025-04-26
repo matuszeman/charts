@@ -3,9 +3,11 @@
   {{- fail "deployment.kind must be Deployment or StatefulSet" }}
 {{- end }}
 {{- if $.Values.deployment.enabled }}
-{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- $deployments := default (dict "" $.Values.deployment) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+{{- if $deployment.staticIps }}
+{{- else }}
 apiVersion: apps/v1
 kind: {{ $.Values.deployment.kind }}
 metadata:
@@ -31,6 +33,7 @@ spec:
   template:
     {{- include "idp-app.podTemplate" (list $ $deploymentKey $deployment ) | nindent 4 }}
 ---
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

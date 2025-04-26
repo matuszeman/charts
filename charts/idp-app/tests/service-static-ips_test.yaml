@@ -1,0 +1,35 @@
+suite: service-static-ips
+templates:
+  - service.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should generate EndpointSlices
+    values:
+      - values/service.yaml
+      - values/deployment-static-ips.yaml
+    asserts:
+      - matchSnapshot: {}
+  - it: when multi deployment
+    values:
+      - values/service.yaml
+      - values/deployment-static-ips.yaml
+      - values/multi.yaml
+    asserts:
+      - matchSnapshot: { }
+  - it: when multi deployment with overwrite
+    values:
+      - values/service.yaml
+      - values/deployment-static-ips.yaml
+    set:
+      deployment:
+        staticIps:
+          - "192.168.88.4"
+          - "192.168.88.5"
+        multi:
+          one: {}
+          two:
+            staticIps:
+              - 192.168.100.1
+    asserts:
+      - matchSnapshot: { }

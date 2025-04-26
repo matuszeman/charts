@@ -1,0 +1,176 @@
+should generate EndpointSlices:
+  1: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME
+    spec:
+      ports:
+        - name: app
+          port: 80
+          protocol: TCP
+          targetPort: app
+      type: ClusterIP
+  2: |
+    addressType: IPv4
+    apiVersion: discovery.k8s.io/v1
+    endpoints:
+      - addresses:
+          - 192.168.88.4
+      - addresses:
+          - 192.168.88.5
+    kind: EndpointSlice
+    metadata:
+      labels:
+        endpointslice.kubernetes.io/managed-by: idp-app
+        kubernetes.io/service-name: RELEASE-NAME
+      name: RELEASE-NAME-static
+    ports:
+      - name: app
+        port: 80
+        protocol: TCP
+when multi deployment:
+  1: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-one
+    spec:
+      ports:
+        - name: app
+          port: 80
+          protocol: TCP
+          targetPort: app
+      type: ClusterIP
+  2: |
+    addressType: IPv4
+    apiVersion: discovery.k8s.io/v1
+    endpoints:
+      - addresses:
+          - 192.168.88.4
+      - addresses:
+          - 192.168.88.5
+    kind: EndpointSlice
+    metadata:
+      labels:
+        endpointslice.kubernetes.io/managed-by: idp-app
+        kubernetes.io/service-name: RELEASE-NAME-one
+      name: RELEASE-NAME-one-static
+    ports:
+      - name: app
+        port: 80
+        protocol: TCP
+  3: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-two
+    spec:
+      ports:
+        - name: app
+          port: 80
+          protocol: TCP
+          targetPort: app
+      type: ClusterIP
+  4: |
+    addressType: IPv4
+    apiVersion: discovery.k8s.io/v1
+    endpoints:
+      - addresses:
+          - 192.168.88.4
+      - addresses:
+          - 192.168.88.5
+    kind: EndpointSlice
+    metadata:
+      labels:
+        endpointslice.kubernetes.io/managed-by: idp-app
+        kubernetes.io/service-name: RELEASE-NAME-two
+      name: RELEASE-NAME-two-static
+    ports:
+      - name: app
+        port: 80
+        protocol: TCP
+when multi deployment with overwrite:
+  1: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-one
+    spec:
+      ports:
+        - name: app
+          port: 80
+          protocol: TCP
+          targetPort: app
+      type: ClusterIP
+  2: |
+    addressType: IPv4
+    apiVersion: discovery.k8s.io/v1
+    endpoints:
+      - addresses:
+          - 192.168.88.4
+      - addresses:
+          - 192.168.88.5
+    kind: EndpointSlice
+    metadata:
+      labels:
+        endpointslice.kubernetes.io/managed-by: idp-app
+        kubernetes.io/service-name: RELEASE-NAME-one
+      name: RELEASE-NAME-one-static
+    ports:
+      - name: app
+        port: 80
+        protocol: TCP
+  3: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-two
+    spec:
+      ports:
+        - name: app
+          port: 80
+          protocol: TCP
+          targetPort: app
+      type: ClusterIP
+  4: |
+    addressType: IPv4
+    apiVersion: discovery.k8s.io/v1
+    endpoints:
+      - addresses:
+          - 192.168.100.1
+    kind: EndpointSlice
+    metadata:
+      labels:
+        endpointslice.kubernetes.io/managed-by: idp-app
+        kubernetes.io/service-name: RELEASE-NAME-two
+      name: RELEASE-NAME-two-static
+    ports:
+      - name: app
+        port: 80
+        protocol: TCP

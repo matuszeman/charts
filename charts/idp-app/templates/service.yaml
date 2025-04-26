@@ -3,8 +3,9 @@
 {{- if not $.Values.deployment.enabled }}
 {{- fail "service: deployment must be enabled" }}
 {{- end }}
-{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- $deployments := default (dict "" $.Values.deployment) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
+{{- $deployment = mustMergeOverwrite (deepCopy $.Values.deployment) (deepCopy $deployment) }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 apiVersion: v1
 kind: Service
@@ -22,9 +23,31 @@ spec:
       {{- with $.Values.service.additionalPorts }}
       {{- toYaml . | nindent 4 }}
       {{- end }}
+  {{- if not $deployment.staticIps }}
   selector:
       {{- include "idp-app.selectorLabels" (list $ $deploymentKey) | nindent 4 }}
+  {{- end }}
 ---
-{{- end}}
-{{- end}}
-{{- end}}
+{{- if $deployment.staticIps }}
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: {{ $deploymentName }}-static
+  labels:
+    kubernetes.io/service-name: {{ $deploymentName }}
+    endpointslice.kubernetes.io/managed-by: idp-app
+addressType: IPv4
+ports:
+  - name: app
+    protocol: {{ $.Values.service.targetPortProtocol | default "TCP" }}
+    port: {{ required "service.port required" $.Values.service.port }}
+endpoints:
+  {{- range $ip := $deployment.staticIps }}
+  - addresses:
+      - {{ $ip | quote }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
