@@ -1,0 +1,12 @@
+suite: deployment-static-ips
+templates:
+  - deployment.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should not generate any manifest
+    values:
+      - values/deployment-static-ips.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
