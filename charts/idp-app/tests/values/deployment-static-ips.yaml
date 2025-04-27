@@ -1,5 +1,4 @@
 deployment:
-  enabled: true
   staticIps:
     - "192.168.88.4"
     - "192.168.88.5"
