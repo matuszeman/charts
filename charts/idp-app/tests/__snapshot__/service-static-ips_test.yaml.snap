@@ -22,8 +22,9 @@ should generate EndpointSlices:
     endpoints:
       - addresses:
           - 192.168.88.4
-      - addresses:
           - 192.168.88.5
+        conditions:
+          ready: true
     kind: EndpointSlice
     metadata:
       labels:
@@ -58,8 +59,9 @@ when multi deployment:
     endpoints:
       - addresses:
           - 192.168.88.4
-      - addresses:
           - 192.168.88.5
+        conditions:
+          ready: true
     kind: EndpointSlice
     metadata:
       labels:
@@ -93,8 +95,9 @@ when multi deployment:
     endpoints:
       - addresses:
           - 192.168.88.4
-      - addresses:
           - 192.168.88.5
+        conditions:
+          ready: true
     kind: EndpointSlice
     metadata:
       labels:
@@ -129,8 +132,9 @@ when multi deployment with overwrite:
     endpoints:
       - addresses:
           - 192.168.88.4
-      - addresses:
           - 192.168.88.5
+        conditions:
+          ready: true
     kind: EndpointSlice
     metadata:
       labels:
@@ -164,6 +168,8 @@ when multi deployment with overwrite:
     endpoints:
       - addresses:
           - 192.168.100.1
+        conditions:
+          ready: true
     kind: EndpointSlice
     metadata:
       labels:
