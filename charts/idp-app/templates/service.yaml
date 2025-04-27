@@ -40,7 +40,7 @@ addressType: IPv4
 ports:
   - name: app
     protocol: {{ $.Values.service.targetPortProtocol | default "TCP" }}
-    port: {{ required "service.port required" $.Values.service.port }}
+    port: {{ required "service.targetPort required" $.Values.service.targetPort }}
 endpoints:
   {{- range $ip := $deployment.staticIps }}
   - addresses:

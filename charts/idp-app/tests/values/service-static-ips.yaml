@@ -1,0 +1,4 @@
+service:
+  enabled: true
+  port: 80
+  targetPort: 8123
