@@ -14,7 +14,7 @@ should generate EndpointSlices:
         - name: app
           port: 80
           protocol: TCP
-          targetPort: app
+          targetPort: 8123
       type: ClusterIP
   2: |
     addressType: IPv4
@@ -32,7 +32,7 @@ should generate EndpointSlices:
       name: RELEASE-NAME-static
     ports:
       - name: app
-        port: 80
+        port: 8123
         protocol: TCP
 when multi deployment:
   1: |
@@ -50,7 +50,7 @@ when multi deployment:
         - name: app
           port: 80
           protocol: TCP
-          targetPort: app
+          targetPort: 8123
       type: ClusterIP
   2: |
     addressType: IPv4
@@ -68,7 +68,7 @@ when multi deployment:
       name: RELEASE-NAME-one-static
     ports:
       - name: app
-        port: 80
+        port: 8123
         protocol: TCP
   3: |
     apiVersion: v1
@@ -85,7 +85,7 @@ when multi deployment:
         - name: app
           port: 80
           protocol: TCP
-          targetPort: app
+          targetPort: 8123
       type: ClusterIP
   4: |
     addressType: IPv4
@@ -103,7 +103,7 @@ when multi deployment:
       name: RELEASE-NAME-two-static
     ports:
       - name: app
-        port: 80
+        port: 8123
         protocol: TCP
 when multi deployment with overwrite:
   1: |
@@ -121,7 +121,7 @@ when multi deployment with overwrite:
         - name: app
           port: 80
           protocol: TCP
-          targetPort: app
+          targetPort: 8123
       type: ClusterIP
   2: |
     addressType: IPv4
@@ -139,7 +139,7 @@ when multi deployment with overwrite:
       name: RELEASE-NAME-one-static
     ports:
       - name: app
-        port: 80
+        port: 8123
         protocol: TCP
   3: |
     apiVersion: v1
@@ -156,7 +156,7 @@ when multi deployment with overwrite:
         - name: app
           port: 80
           protocol: TCP
-          targetPort: app
+          targetPort: 8123
       type: ClusterIP
   4: |
     addressType: IPv4
@@ -172,5 +172,5 @@ when multi deployment with overwrite:
       name: RELEASE-NAME-two-static
     ports:
       - name: app
-        port: 80
+        port: 8123
         protocol: TCP

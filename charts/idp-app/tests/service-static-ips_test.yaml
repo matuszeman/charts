@@ -6,20 +6,20 @@ values:
 tests:
   - it: should generate EndpointSlices
     values:
-      - values/service.yaml
+      - values/service-static-ips.yaml
       - values/deployment-static-ips.yaml
     asserts:
       - matchSnapshot: {}
   - it: when multi deployment
     values:
-      - values/service.yaml
+      - values/service-static-ips.yaml
       - values/deployment-static-ips.yaml
       - values/multi.yaml
     asserts:
       - matchSnapshot: { }
   - it: when multi deployment with overwrite
     values:
-      - values/service.yaml
+      - values/service-static-ips.yaml
       - values/deployment-static-ips.yaml
     set:
       deployment:
