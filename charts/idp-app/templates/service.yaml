@@ -1,11 +1,11 @@
 {{- if not .Values.debug -}}
 {{- if .Values.service.enabled }}
-{{- if not $.Values.deployment.enabled }}
-{{- fail "service: deployment must be enabled" }}
-{{- end }}
 {{- $deployments := default (dict "" $.Values.deployment) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deployment = mustMergeOverwrite (deepCopy $.Values.deployment) (deepCopy $deployment) }}
+{{- if not (or $deployment.enabled $deployment.staticIps) }}
+{{- fail "service: deployment must be enabled or staticIps specified" }}
+{{- end }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 apiVersion: v1
 kind: Service
