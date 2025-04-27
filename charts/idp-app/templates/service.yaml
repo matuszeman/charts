@@ -42,10 +42,10 @@ ports:
     protocol: {{ $.Values.service.targetPortProtocol | default "TCP" }}
     port: {{ required "service.targetPort required" $.Values.service.targetPort }}
 endpoints:
-  {{- range $ip := $deployment.staticIps }}
   - addresses:
-      - {{ $ip | quote }}
-  {{- end }}
+      {{ toYaml $deployment.staticIps | nindent 6 }}
+    conditions:
+      ready: true
 ---
 {{- end }}
 {{- end }}
