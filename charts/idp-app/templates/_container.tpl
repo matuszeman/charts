@@ -115,7 +115,7 @@ env:
 {{- end }}
 {{- end }}
 
-{{- if or .configDirs .configFiles .volumeMounts }}
+{{- if or .configDirs .configFiles .volumeMounts .volumeFiles }}
 volumeMounts:
 {{- with .configDirs }}
 {{- /* should be in sync with _configs.tpl idp-app.isConfigUsedInContainersVolumeMounts template */}}

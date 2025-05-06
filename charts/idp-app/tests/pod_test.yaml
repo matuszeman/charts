@@ -1,0 +1,29 @@
+suite: pod
+templates:
+  - deployment.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: when .volumeFiles are set, then generate container volume mount
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          volumeFiles:
+            pvcvol:
+              file.yaml:
+                mountPath: /contfile.yaml
+
+      volumes:
+        pvcvol:
+          persistentVolumeClaim:
+            claimName: pvc-files
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /contfile.yaml
+            name: pvcvol
+            readOnly: true
+            subPath: file.yaml
