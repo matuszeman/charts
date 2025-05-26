@@ -1,4 +1,6 @@
 {{- if not .Values.debug -}}
+{{- $values := .Values }}
+{{- $defaults := $values.global.idpAppConfig.defaults }}
 {{- $cluster := required "cluster does not exist in cluster list" (index .Values.global.idpAppConfig.clusters .Values.global.cluster) }}
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
@@ -49,7 +51,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  refreshInterval: {{ default "0" .refreshInterval | quote }}
+  refreshInterval: {{ default (required "defaults.configs.externalSecret.refreshInterval required" $defaults.configs.externalSecret.refreshInterval) .refreshInterval | quote }}
   secretStoreRef:
     name: {{ include "idp-app.fullname" $ }}-config-secretsmanager
     kind: SecretStore

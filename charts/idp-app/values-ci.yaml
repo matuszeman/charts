@@ -52,6 +52,13 @@ global:
             port: 80
         accessLog:
           enabled: true
+      configs:
+        externalSecret:
+          # reload of external-secret using annotation stopped working with refreshInterval=0
+          # we set it to very long period now, so it does not reload, but annotations work
+          # https://github.com/external-secrets/external-secrets/pull/4086
+          # https://github.com/external-secrets/external-secrets/issues/3979
+          refreshInterval: "99999h"
 
 appName: app-name
 appVersion: "{{ .Values.global.appVersion }}"

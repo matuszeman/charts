@@ -30,7 +30,7 @@ should match snapshot with values-ci.yaml:
             key: arn:aws:iam::123456789012:role/external-secrets
             metadataPolicy: None
             version: uuid/a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
-      refreshInterval: "0"
+      refreshInterval: 99999h
       secretStoreRef:
         kind: SecretStore
         name: RELEASE-NAME-resource-suffix-config-secretsmanager
@@ -64,7 +64,7 @@ should match snapshot with values-ci.yaml:
             decodingStrategy: None
             key: arn:aws:iam::123456789012:role/external-secrets-manual
             metadataPolicy: None
-      refreshInterval: "0"
+      refreshInterval: 99999h
       secretStoreRef:
         kind: SecretStore
         name: RELEASE-NAME-resource-suffix-config-secretsmanager
@@ -96,7 +96,7 @@ should match snapshot with values-ci.yaml:
             decodingStrategy: None
             key: arn:aws:iam::123456789012:role/external-secrets
             metadataPolicy: None
-      refreshInterval: "0"
+      refreshInterval: 99999h
       secretStoreRef:
         kind: SecretStore
         name: RELEASE-NAME-resource-suffix-config-secretsmanager

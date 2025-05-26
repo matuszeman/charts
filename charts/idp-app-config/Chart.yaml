@@ -2,4 +2,4 @@ apiVersion: v2
 name: idp-app-config
 description: idp-app config
 type: application
-version: 1.1.0
+version: 1.2.0

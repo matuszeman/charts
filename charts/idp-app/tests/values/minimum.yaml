@@ -49,6 +49,9 @@ global:
             port: 80
         accessLog:
           enabled: true
+      configs:
+        externalSecret:
+          refreshInterval: "99999h"
 
 appName: app-name
 appVersion: 0.1.0
