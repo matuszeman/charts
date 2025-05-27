@@ -177,3 +177,20 @@ tests:
           port: 80
     asserts:
       - matchSnapshot: { }
+  - it: ingress service is templated
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: example.com
+        host: existing-service
+        service:
+          name: "{{ .Release.Name }}-existing-service"
+          port: 80
+    asserts:
+      - isSubset:
+          path: spec.rules[0].http.paths[0].backend.service
+          content:
+            name: RELEASE-NAME-existing-service
+            port:
+              number: 80

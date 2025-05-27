@@ -84,7 +84,7 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: {{ $backendRef.name | required "ingress: service.name required" }}
+                name: {{ tpl ($backendRef.name | required "ingress: service.name required") $ | quote }}
                 port:
                   number: {{ $backendRef.port | required "ingress: service.port required" }}
 ---
