@@ -149,3 +149,31 @@ tests:
           path: metadata.annotations
           content:
             nginx.ingress.kubernetes.io/auth-signin: "https://auth.test-222.example.com/oauth2/start?rd=https://$host$request_uri"
+  - it: when both service.enabled and ingress.service is set, then fail
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: example.com
+        host: existing-service
+        service:
+          name: existing-service
+          port: 80
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress: both service.enabled and ingress.service is set"
+  - it: when service is disabled and ingress service is set
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: example.com
+        host: existing-service
+        service:
+          name: existing-service
+          port: 80
+    asserts:
+      - matchSnapshot: { }

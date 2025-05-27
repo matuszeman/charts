@@ -1,14 +1,21 @@
 {{- if not $.Values.debug -}}
 {{- $ingresses := merge (dict "" $.Values.ingress) $.Values.ingresses }}
 {{- range $ingressKey, $ingressSpec := $ingresses }}
-{{- $ingress := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.ingress) $ingressSpec }}
+{{- $ingress := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.ingress) (deepCopy $ingressSpec) }}
 {{- if $ingress.enabled -}}
-{{- if not $.Values.service.enabled }}
-{{- fail "ingress: service must be enabled" }}
-{{- end }}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+{{- $backendRef := dict }}
+{{- if and $.Values.service.enabled $ingress.service }}
+{{- fail "ingress: both service.enabled and ingress.service is set" }}
+{{- else if $.Values.service.enabled }}
+{{- $backendRef = dict "name" $deploymentName "port" (default "app" $.Values.service.port) }}
+{{- else if $ingress.service }}
+{{- $backendRef = deepCopy $ingress.service }}
+{{- else }}
+{{- fail "ingress: service must be enabled" }}
+{{- end }}
 {{- $ingressName := join "-" (compact (list $deploymentName $ingressKey)) }}
 {{- $cluster := required "cluster does not exist in cluster list" (index $.Values.global.idpAppConfig.clusters $.Values.global.cluster) }}
 {{- $domain := required "domain does not exist in global.idpAppConfig.cluster.CLUSTER.domains" (index (required "$cluster.domains required" $cluster.domains) (required "ingress.domain required" $ingress.domain)) }}
@@ -77,9 +84,9 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: {{ $deploymentName }}
+                name: {{ $backendRef.name | required "ingress: service.name required" }}
                 port:
-                  name: app
+                  number: {{ $backendRef.port | required "ingress: service.port required" }}
 ---
 {{- if and $ingress.oauth2ProxyAuth.enabled (empty $ingress.oauth2ProxyAuth.url) }}
 apiVersion: networking.k8s.io/v1

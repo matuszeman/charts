@@ -37,7 +37,7 @@ should match snapshot with values-ci.yaml:
                   service:
                     name: RELEASE-NAME-resource-suffix
                     port:
-                      name: app
+                      number: 80
                 path: /somepath(/|$)(.*)
                 pathType: ImplementationSpecific
       tls:
@@ -68,7 +68,7 @@ when ingress and ingresses are set:
                   service:
                     name: RELEASE-NAME
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
@@ -103,7 +103,7 @@ when ingress and ingresses are set:
                   service:
                     name: RELEASE-NAME
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
@@ -136,7 +136,7 @@ when ingress and ingresses are set:
                   service:
                     name: RELEASE-NAME
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
@@ -167,7 +167,7 @@ when multi deployment:
                   service:
                     name: RELEASE-NAME-one
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
@@ -197,7 +197,7 @@ when multi deployment:
                   service:
                     name: RELEASE-NAME-two
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
@@ -233,7 +233,7 @@ when oauth2ProxyAuth is enabled on path:
                   service:
                     name: RELEASE-NAME
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
@@ -296,7 +296,7 @@ when oauth2ProxyAuth is enabled on url:
                   service:
                     name: RELEASE-NAME
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
@@ -332,10 +332,41 @@ when oauth2ProxyAuth with externalUrl:
                   service:
                     name: RELEASE-NAME
                     port:
-                      name: app
+                      number: 80
                 path: /
                 pathType: ImplementationSpecific
       tls:
         - hosts:
             - testapp.example.com
+          secretName: RELEASE-NAME-ingress-tls
+when service is disabled and ingress service is set:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        cert-manager.io/cluster-issuer: default
+        nginx.ingress.kubernetes.io/enable-access-log: "true"
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME
+    spec:
+      ingressClassName: nginx-internal
+      rules:
+        - host: existing-service.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: existing-service
+                    port:
+                      number: 80
+                path: /
+                pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - existing-service.example.com
           secretName: RELEASE-NAME-ingress-tls
