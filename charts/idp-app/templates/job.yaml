@@ -1,5 +1,6 @@
 {{- if not $.Values.debug -}}
 {{- if $.Values.job.enabled }}
+{{- $this := $.Values.job }}
 {{- $deployments := (dict "" dict) }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
@@ -9,11 +10,29 @@ metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
-  {{- with $.Values.job.annotations }}
+  {{- with $this.annotations }}
   annotations:
-    {{- toYaml $.Values.job.annotations | nindent 4 }}
+    {{- toYaml $this.annotations | nindent 4 }}
   {{- end }}
 spec:
+  {{- if hasKey $this "activeDeadlineSeconds" }}
+  activeDeadlineSeconds: {{ $this.activeDeadlineSeconds }}
+  {{- end }}
+  {{- if hasKey $this "backoffLimit" }}
+  backoffLimit: {{ $this.backoffLimit }}
+  {{- end }}
+  {{- if hasKey $this "completionMode" }}
+  completionMode: {{ $this.completionMode }}
+  {{- end }}
+  {{- if hasKey $this "completions" }}
+  completions: {{ $this.completions }}
+  {{- end }}
+  {{- if hasKey $this "parallelism" }}
+  parallelism: {{ $this.parallelism }}
+  {{- end }}
+  {{- if hasKey $this "ttlSecondsAfterFinished" }}
+  ttlSecondsAfterFinished: {{ $this.ttlSecondsAfterFinished }}
+  {{- end }}
   template:
     {{- include "idp-app.podTemplate" (list $ $deploymentKey $deployment ) | nindent 4 }}
 ---
