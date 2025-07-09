@@ -2,6 +2,15 @@ apiVersion: v1
 entries:
   idp-app:
   - apiVersion: v2
+    created: "2025-07-09T11:27:34.714740576Z"
+    description: Base chart
+    digest: aafd35c76beb6fc1e4d4d80142320beee8e3a077cd678646f748dd023c536007
+    name: idp-app
+    type: application
+    urls:
+    - https://github.com/matuszeman/charts/releases/download/idp-app-1.7.0/idp-app-1.7.0.tgz
+    version: 1.7.0
+  - apiVersion: v2
     created: "2025-05-27T07:14:02.644349085Z"
     description: Base chart
     digest: f2bc7f3824c653dc28423ff111e6478791f6b7d24944b7dc1b7a6259fc757b8c
@@ -158,4 +167,4 @@ entries:
     urls:
     - https://github.com/matuszeman/charts/releases/download/test-0.1.0/test-0.1.0.tgz
     version: 0.1.0
-generated: "2025-05-27T07:14:02.644435427Z"
+generated: "2025-07-09T11:27:34.714842686Z"
