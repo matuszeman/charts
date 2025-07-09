@@ -9,6 +9,19 @@ tests:
       - values/job.yaml
     asserts:
       - matchSnapshot: { }
+  - it: given full supported spec values
+    values:
+      - values/job.yaml
+    set:
+      job:
+        activeDeadlineSeconds: 100
+        backoffLimit: 5
+        completionMode: Indexed
+        completions: 3
+        parallelism: 2
+        ttlSecondsAfterFinished: 3600
+    asserts:
+      - matchSnapshot: { }
   - it: default restartPolicy
     values:
       - values/job.yaml
