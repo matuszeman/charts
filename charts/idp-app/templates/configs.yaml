@@ -12,7 +12,7 @@ apiVersion: bitnami.com/v1alpha1
 kind: SealedSecret
 metadata:
   name: {{ include "idp-app.configName" (list $ $configKey) }}
-  {{- $annotations := merge (dict) (default $configSpec.annotations dict) }}
+  {{- $annotations := merge (dict) $defaults.configs.annotations (default $configSpec.annotations dict) }}
   {{- if .scope }}
   {{- $annotations = merge $annotations (dict (printf "sealedsecrets.bitnami.com/%s" .scope ) "true")}}
   {{- end }}
@@ -45,7 +45,7 @@ metadata:
   name: {{ include "idp-app.configName" (list $ $configKey) }}
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
-  {{ $annotations := merge (dict) (default $configSpec.annotations dict) (dict "update-hash" .updateHash) }}
+  {{- $annotations := merge (dict) $defaults.configs.annotations (default $configSpec.annotations dict) (dict "values-hash" $configSpec.valuesHash) }}
   {{- with $annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -82,7 +82,8 @@ metadata:
   name: {{ include "idp-app.configName" (list $ $configKey) }}
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
-  {{- with $configSpec.annotations }}
+  {{- $annotations := merge (dict) $defaults.configs.annotations (default $configSpec.annotations dict) }}
+  {{- with $annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -101,6 +102,11 @@ metadata:
   name: {{ include "idp-app.fullname" $ }}-config-secretsmanager
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
+  {{- $annotations := merge (dict) $defaults.configs.annotations }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   provider:
     aws:

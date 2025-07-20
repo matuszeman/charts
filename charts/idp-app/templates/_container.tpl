@@ -88,21 +88,13 @@ env:
     {{- else if hasKey $v "config" }}
     {{- with $configRef := $v.config }}
     {{- $config := required (printf "env: %s must be specified in 'configs' values."  $configRef.name) (index $.Values.configs $configRef.name) }}
-    {{- if $config.fromConfigMap }}
-    configMapKeyRef:
-      name: {{ tpl $config.fromConfigMap $ }}
-      key: {{ $configRef.key }}
-    {{- else if $config.fromSecret }}
+    {{- if or $config.fromSecret $config.awsSecret $config.sealedSecret }}
     secretKeyRef:
-      name: {{ tpl $config.fromSecret $ }}
+      name: {{ include "idp-app.configName" (list $ $configRef.name) }}
       key: {{ $configRef.key }}
-    {{- else if or $config.awsSecret $config.sealedSecret }}
-    secretKeyRef:
-      name: {{ printf "%s-config-%s" (include "idp-app.fullname" $ ) $configRef.name }}
-      key: {{ $configRef.key }}
-    {{- else if $config.content }}
+    {{- else if or $config.fromConfigMap $config.content }}
     configMapKeyRef:
-      name: {{ printf "%s-config-%s" (include "idp-app.fullname" $ ) $configRef.name }}
+      name: {{ include "idp-app.configName" (list $ $configRef.name) }}
       key: {{ $configRef.key }}
     {{- else }}
     {{- required ( printf "configs.%s does not specify fromConfigMap, fromSecret, awsSecret, sealedSecret, nor content" $k ) nil }}

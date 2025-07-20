@@ -86,11 +86,21 @@ should match snapshot with values-ci.yaml:
                     configMapKeyRef:
                       key: somekey
                       name: RELEASE-NAME-not-managed-cm
+                - name: configFromConfigMapHashed
+                  valueFrom:
+                    configMapKeyRef:
+                      key: somekey
+                      name: RELEASE-NAME-not-managed-cm-hashed-4d4c3f1
                 - name: configFromSecret
                   valueFrom:
                     secretKeyRef:
                       key: somekey
                       name: RELEASE-NAME-not-managed-secret
+                - name: configFromSecretHashed
+                  valueFrom:
+                    secretKeyRef:
+                      key: somekey
+                      name: RELEASE-NAME-not-managed-secret-hashed-4aef4fd
                 - name: configKeyTemplatedValue
                   valueFrom:
                     configMapKeyRef:
@@ -252,9 +262,9 @@ should match snapshot with values-ci.yaml:
                 secretName: RELEASE-NAME-resource-suffix-config-app-secrets-manual
             - name: config-hashed-aws-secret
               secret:
-                secretName: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-22aa808
+                secretName: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-7a8f252
             - configMap:
-                name: RELEASE-NAME-resource-suffix-config-hashed-cm-7c78049
+                name: RELEASE-NAME-resource-suffix-config-hashed-cm-2b8747e
               name: config-hashed-cm
             - configMap:
                 name: RELEASE-NAME-not-managed-cm

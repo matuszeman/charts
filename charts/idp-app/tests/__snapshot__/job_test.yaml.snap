@@ -1,4 +1,4 @@
-given full supported values:
+given full supported spec values:
   1: |
     apiVersion: batch/v1
     kind: Job

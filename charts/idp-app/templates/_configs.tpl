@@ -4,29 +4,36 @@
 {{- $configSpec := index $.Values.configs $configKey | required (printf "configs.%s does not exist") -}}
 {{- $hash := include "idp-app.configHash" (list $configKey $configSpec)}}
 {{- $suffix := "" }}
-{{- if and $hash $configSpec.hashSuffix }}
-{{- $suffix = printf "-%s" $hash }}
+{{- if and $hash (eq (toString $configSpec.restartPodOnUpdate) "NameSuffix") }}
+{{- $suffix = printf "-%s" ($hash | sha1sum | trunc 7) }}
 {{- end }}
+{{- if $configSpec.fromConfigMap }}
+{{- print (tpl $configSpec.fromConfigMap $) $suffix }}
+{{- else if $configSpec.fromSecret }}
+{{- print (tpl $configSpec.fromSecret $) $suffix }}
+{{- else }}
 {{- include "idp-app.fullname" $ }}-config-{{ $configKey }}{{ $suffix }}
+{{- end }}
 {{- end }}
 {{- define "idp-app.configHash"}}
 {{- $configKey := index . 0 -}}
 {{- $configSpec := index . 1 -}}
-{{- if or $configSpec.fromSecret $configSpec.fromConfigMap }}
+{{- if $configSpec.valuesHash }}
+{{- $configSpec.valuesHash }}
 {{- else if $configSpec.awsSecret }}
-{{- required "awsSecret.arn required" (cat $configSpec.awsSecret.arn $configSpec.awsSecret.versionId $configSpec.awsSecret.updateHash)  | sha256sum | trunc 7 }}
+{{- cat $configSpec.awsSecret.arn $configSpec.awsSecret.versionId | sha1sum }}
 {{- else if $configSpec.sealedSecret }}
-{{- required "sealedSecret.encryptedData required" (cat $configSpec.sealedSecret.encryptedData) | sha256sum | trunc 7 }}
+{{- required "sealedSecret.encryptedData required" (cat $configSpec.sealedSecret.encryptedData) | sha1sum }}
 {{- else if $configSpec.content }}
-{{- toJson $configSpec.content | sha256sum | trunc 7 }}
+{{- toJson $configSpec.content | sha1sum }}
 {{- end }}
 {{- end }}
 {{- define "idp-app.configsPodAnnotations" -}}
 {{- range $configKey, $configSpec := .Values.configs }}
-{{ if $configSpec.restartPodOnUpdate }}
+{{ if or (eq (toString $configSpec.restartPodOnUpdate) "true") (eq (toString $configSpec.restartPodOnUpdate) "PodAnnotation") }}
 {{- $hash := include "idp-app.configHash" (list $configKey $configSpec)}}
 {{ if $hash }}
-config-{{ $configKey }}-hash: {{ $hash | quote }}
+config-hash-{{ $configKey }}: {{ $hash | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
