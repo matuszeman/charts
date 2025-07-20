@@ -53,6 +53,9 @@ global:
         accessLog:
           enabled: true
       configs:
+        annotations: {}
+          # we want argocd to sync configs first, then the rest of deployment
+          #argocd.argoproj.io/sync-wave: "-10"
         externalSecret:
           # reload of external-secret using annotation stopped working with refreshInterval=0
           # we set it to very long period now, so it does not reload, but annotations work
@@ -110,9 +113,9 @@ configs:
       arn: arn:aws:iam::123456789012:role/external-secrets
       versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
   app-secrets-manual:
+    valuesHash: 1234fdfdf
     awsSecret:
       arn: arn:aws:iam::123456789012:role/external-secrets-manual
-      updateHash: 1234
   php:
     content:
       php.ini: |
@@ -122,17 +125,25 @@ configs:
     content:
       nothing: none
   hashed-cm:
-    hashSuffix: true
+    restartPodOnUpdate: "NameSuffix"
     content:
       some: value
   hashed-aws-secret:
-    hashSuffix: true
+    restartPodOnUpdate: "NameSuffix"
     awsSecret:
       arn: arn:aws:iam::123456789012:role/external-secrets
   not-managed-cm:
     fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
+  not-managed-cm-hashed:
+    fromConfigMap: "{{ .Release.Name }}-not-managed-cm-hashed"
+    valuesHash: "abcd1111"
+    restartPodOnUpdate: "NameSuffix"
   not-managed-secret:
     fromSecret: "{{ .Release.Name }}-not-managed-secret"
+  not-managed-secret-hashed:
+    fromSecret: "{{ .Release.Name }}-not-managed-secret-hashed"
+    valuesHash: "abcd2222"
+    restartPodOnUpdate: "NameSuffix"
 #  sealed-secret:
 #    sealedSecret:
 #      encryptedData:
@@ -235,6 +246,14 @@ containers:
       configFromSecret:
         config:
           name: not-managed-secret
+          key: somekey
+      configFromConfigMapHashed:
+        config:
+          name: not-managed-cm-hashed
+          key: somekey
+      configFromSecretHashed:
+        config:
+          name: not-managed-secret-hashed
           key: somekey
       secretKeyValue:
         secretKeyRef:

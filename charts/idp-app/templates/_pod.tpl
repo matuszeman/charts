@@ -48,25 +48,13 @@ spec:
     {{- if empty (include "idp-app.isConfigUsedInContainersVolumeMounts" (list $configKey $containers)) }}
     {{- else }}
     - name: config-{{ $configKey }}
-      {{- if $v.fromConfigMap }}
-      configMap:
-        name: {{ tpl $v.fromConfigMap $ }}
-        {{- with $v.defaultMode }}
-        defaultMode: {{ . }}
-        {{- end }}
-      {{- else if $v.fromSecret }}
-      secret:
-        secretName: {{ tpl $v.fromSecret $ }}
-        {{- with $v.defaultMode }}
-        defaultMode: {{ . }}
-        {{- end }}
-      {{- else if or $v.awsSecret $v.sealedSecret }}
+      {{- if or $v.fromSecret $v.awsSecret $v.sealedSecret }}
       secret:
         secretName: {{ include "idp-app.configName" (list $ $configKey) }}
         {{- with $v.defaultMode }}
         defaultMode: {{ . }}
         {{- end }}
-      {{- else if $v.content }}
+      {{- else if or $v.fromConfigMap $v.content }}
       configMap:
         name: {{ include "idp-app.configName" (list $ $configKey) }}
         {{- with $v.defaultMode }}

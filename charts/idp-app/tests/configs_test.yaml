@@ -51,6 +51,67 @@ tests:
           path: spec.template.spec.volumes
           value: null
         template: deployment.yaml
+  - it: when config has both content and fromSecret or awsSecret specified, then use Secret instead of ConfigMap
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          configDirs:
+            aws-secret: /config/aws-secret
+            from-secret: /config/from-secret
+          env:
+            aws-secret-env:
+              config:
+                name: aws-secret
+                key: key1
+            from-secret-env:
+              config:
+                name: from-secret
+                key: key1
+      configs:
+        aws-secret:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+          content:
+            key1: value
+        from-secret:
+          fromSecret: "some-secret"
+          content:
+            key1: value
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: aws-secret-env
+            valueFrom:
+              secretKeyRef:
+                key: key1
+                name: RELEASE-NAME-config-aws-secret
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: from-secret-env
+            valueFrom:
+              secretKeyRef:
+                key: key1
+                name: some-secret
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-from-secret
+            secret:
+              secretName: some-secret
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-aws-secret
+            secret:
+              secretName: RELEASE-NAME-config-aws-secret
+        template: deployment.yaml
   - it: when config is specified and IS used in container, then DO generate deployment volume
     values:
       - values/deployment.yaml
@@ -141,6 +202,24 @@ tests:
     asserts:
       - matchSnapshot:
           template: configs.yaml
+  - it: when global.idpAppConfig.defaults.configs.annotations is set
+    set:
+      global:
+        idpAppConfig:
+          defaults:
+            configs:
+              annotations:
+                global-config-annotation: some-value
+      configs:
+        cm:
+          content:
+            some: data
+        aws-secrets:
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+    asserts:
+      - matchSnapshot:
+          template: configs.yaml
   - it: when awsSecret with versionId is specified, then set it to externalsecret
     set:
       configs:
@@ -154,20 +233,20 @@ tests:
           value: uuid/a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
         template: configs.yaml
         documentIndex: 0
-  - it: when awsSecret and updateHash, then generate ExternalSecret annotation
+  - it: when awsSecret and valuesHash, then generate ExternalSecret annotation
     set:
       configs:
         aws-secrets:
+          valuesHash: 1234aaa
           awsSecret:
             arn: arn:aws:iam::123456789012:role/external-secrets-manual
-            updateHash: 1234
     asserts:
       - equal:
-          path: metadata.annotations.update-hash
-          value: 1234
+          path: metadata.annotations.values-hash
+          value: 1234aaa
         template: configs.yaml
         documentIndex: 0
-  - it: when updateHash and restartPodOnUpdate, then generate Deployment pod with config annotation
+  - it: when valuesHash and restartPodOnUpdate, then generate Deployment pod with config annotation
     values:
       - values/deployment.yaml
     set:
@@ -187,11 +266,19 @@ tests:
           restartPodOnUpdate: true
           content:
             some: data
+        from-cm:
+          restartPodOnUpdate: true
+          valuesHash: "abcd1111"
+          fromConfigMap: "test-cm"
+        from-secret:
+          restartPodOnUpdate: true
+          valuesHash: "abcd2222"
+          fromSecret: "test-secret"
         aws-secret:
           restartPodOnUpdate: true
           awsSecret:
             arn: arn:aws:iam::123456789012:role/external-secrets-manual
-            updateHash: 1234
+            valuesHash: 1234
         aws-secret-versioned:
           restartPodOnUpdate: true
           awsSecret:
@@ -201,9 +288,11 @@ tests:
       - equal:
           path: spec.template.metadata.annotations
           value:
-            config-aws-secret-hash: a9d52bd
-            config-aws-secret-versioned-hash: 2caaeb3
-            config-cm-hash: c67cdc2
+            config-hash-aws-secret: 0f845a68504ca3a4d93e2eee49a5735258ac101c
+            config-hash-aws-secret-versioned: bc8f4130609e4f1944d560a4c16fdb8edef8a8ce
+            config-hash-cm: b5f97e50a8d6fb167b83b3c7084b0d15109429c0
+            config-hash-from-cm: abcd1111
+            config-hash-from-secret: abcd2222
             test: me
         template: deployment.yaml
         documentIndex: 0
@@ -222,21 +311,21 @@ tests:
             some: annotation
         template: configs.yaml
         documentIndex: 0
-  - it: when aws secret with annotations and updateHash
+  - it: when aws secret with annotations and valuesHash
     set:
       configs:
         aws-secret:
           annotations:
             some: annotation
+          valuesHash: fare4342
           awsSecret:
             arn: arn:aws:iam::123456789012:role/external-secrets
-            updateHash: now
     asserts:
       - equal:
           path: metadata.annotations
           value:
             some: annotation
-            update-hash: now
+            values-hash: fare4342
         template: configs.yaml
         documentIndex: 0
   - it: when cm with annotations

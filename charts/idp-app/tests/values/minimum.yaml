@@ -50,6 +50,9 @@ global:
         accessLog:
           enabled: true
       configs:
+        annotations: {}
+          # we want argocd to sync configs first, then the rest of deployment
+          #argocd.argoproj.io/sync-wave: "-10"
         externalSecret:
           refreshInterval: "99999h"
 

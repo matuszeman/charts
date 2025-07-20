@@ -50,7 +50,7 @@ should match snapshot with values-ci.yaml:
     kind: ExternalSecret
     metadata:
       annotations:
-        update-hash: 1234
+        values-hash: 1234fdfdf
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
         app.kubernetes.io/managed-by: Helm
@@ -88,7 +88,7 @@ should match snapshot with values-ci.yaml:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-      name: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-22aa808
+      name: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-7a8f252
     spec:
       dataFrom:
         - extract:
@@ -102,7 +102,7 @@ should match snapshot with values-ci.yaml:
         name: RELEASE-NAME-resource-suffix-config-secretsmanager
       target:
         creationPolicy: Owner
-        name: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-22aa808
+        name: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-7a8f252
         template:
           engineVersion: v2
           metadata:
@@ -122,7 +122,7 @@ should match snapshot with values-ci.yaml:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-      name: RELEASE-NAME-resource-suffix-config-hashed-cm-7c78049
+      name: RELEASE-NAME-resource-suffix-config-hashed-cm-2b8747e
   6: |
     apiVersion: v1
     data:
@@ -269,11 +269,21 @@ should match snapshot with values-ci.yaml:
                     configMapKeyRef:
                       key: somekey
                       name: RELEASE-NAME-not-managed-cm
+                - name: configFromConfigMapHashed
+                  valueFrom:
+                    configMapKeyRef:
+                      key: somekey
+                      name: RELEASE-NAME-not-managed-cm-hashed-4d4c3f1
                 - name: configFromSecret
                   valueFrom:
                     secretKeyRef:
                       key: somekey
                       name: RELEASE-NAME-not-managed-secret
+                - name: configFromSecretHashed
+                  valueFrom:
+                    secretKeyRef:
+                      key: somekey
+                      name: RELEASE-NAME-not-managed-secret-hashed-4aef4fd
                 - name: configKeyTemplatedValue
                   valueFrom:
                     configMapKeyRef:
@@ -435,9 +445,9 @@ should match snapshot with values-ci.yaml:
                 secretName: RELEASE-NAME-resource-suffix-config-app-secrets-manual
             - name: config-hashed-aws-secret
               secret:
-                secretName: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-22aa808
+                secretName: RELEASE-NAME-resource-suffix-config-hashed-aws-secret-7a8f252
             - configMap:
-                name: RELEASE-NAME-resource-suffix-config-hashed-cm-7c78049
+                name: RELEASE-NAME-resource-suffix-config-hashed-cm-2b8747e
               name: config-hashed-cm
             - configMap:
                 name: RELEASE-NAME-not-managed-cm
@@ -495,6 +505,76 @@ when awsSecret is specified, then generate SecretStore and ExternalSecret:
     apiVersion: external-secrets.io/v1beta1
     kind: SecretStore
     metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-config-secretsmanager
+    spec:
+      provider:
+        aws:
+          auth:
+            jwt:
+              serviceAccountRef:
+                name: RELEASE-NAME
+          region: eu-central-1
+          service: SecretsManager
+when global.idpAppConfig.defaults.configs.annotations is set:
+  1: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      annotations:
+        global-config-annotation: some-value
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-config-aws-secrets
+    spec:
+      dataFrom:
+        - extract:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: arn:aws:iam::123456789012:role/external-secrets
+            metadataPolicy: None
+      refreshInterval: 99999h
+      secretStoreRef:
+        kind: SecretStore
+        name: RELEASE-NAME-config-secretsmanager
+      target:
+        creationPolicy: Owner
+        name: RELEASE-NAME-config-aws-secrets
+        template:
+          engineVersion: v2
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/version: 0.1.0
+  2: |
+    apiVersion: v1
+    data:
+      some: data
+    kind: ConfigMap
+    metadata:
+      annotations:
+        global-config-annotation: some-value
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-config-cm
+  3: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: SecretStore
+    metadata:
+      annotations:
+        global-config-annotation: some-value
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
