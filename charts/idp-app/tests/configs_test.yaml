@@ -355,3 +355,27 @@ tests:
           path: spec.dataFrom[0].extract.version
         template: configs.yaml
         documentIndex: 0
+  - it: when cm and templated is enabled, then parse all config values using tpl
+    set:
+      configs:
+        cm:
+          templated: true
+          values:
+            some: value
+          content:
+            key1: |-
+              release: {{ .Release.Name }}
+              configSpec.values.some: {{ .configSpec.values.some }}
+              configKey: {{ .configKey }}
+              contentKey: {{ .contentKey }}
+    asserts:
+      - equal:
+          path: data
+          value:
+            key1: |-
+              release: RELEASE-NAME
+              configSpec.values.some: value
+              configKey: cm
+              contentKey: key1
+        template: configs.yaml
+        documentIndex: 0
