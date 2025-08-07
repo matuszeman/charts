@@ -89,8 +89,11 @@ metadata:
   {{- end }}
 data:
 {{- range $contentKey, $v := $configSpec.content }}
+  {{- $rawValue := $v | required (printf "configs.%s.content.%s required" $configKey $contentKey ) | toString }}
+  {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
+  {{- $val := ($configSpec.templated | default false) | ternary (tpl $rawValue $tplCtx) $rawValue }}
   {{ $contentKey }}:
-{{- toYaml (required (printf "configs.%s.content.%s required" $configKey $contentKey ) $v) | nindent 4 }}
+    {{- toYaml $val | nindent 4 }}
 {{- end }}
 {{- end }}
 {{- end }}
