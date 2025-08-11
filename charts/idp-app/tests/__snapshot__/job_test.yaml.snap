@@ -12,9 +12,27 @@ given full supported spec values:
     spec:
       activeDeadlineSeconds: 100
       backoffLimit: 5
+      backoffLimitPerIndex: 3
       completionMode: Indexed
       completions: 3
       parallelism: 2
+      podFailurePolicy:
+        rules:
+          - action: FailJob
+            onExitCodes:
+              containerName: main
+              operator: In
+              values:
+                - 42
+          - action: Ignore
+            onPodConditions:
+              - type: DisruptionTarget
+      podReplacementPolicy: Failed
+      successPolicy:
+        rules:
+          - succeededCount: 1
+            succeededIndexes: 0,2-3
+      suspend: true
       template:
         metadata:
           labels:
@@ -44,19 +62,14 @@ given full supported spec values:
                   cpu: 100m
                   memory: 128Mi
           enableServiceLinks: false
-          nodeSelector:
-            environment: test
+          nodeSelector: null
           restartPolicy: OnFailure
           securityContext:
             sysctls:
               - name: net.ipv4.ip_unprivileged_port_start
                 value: "0"
           serviceAccountName: RELEASE-NAME
-          tolerations:
-            - effect: NoSchedule
-              key: environment
-              operator: Equal
-              value: test
+          tolerations: null
           topologySpreadConstraints:
             - labelSelector:
                 matchLabels:
@@ -115,19 +128,14 @@ when job enabled:
                   cpu: 100m
                   memory: 128Mi
           enableServiceLinks: false
-          nodeSelector:
-            environment: test
+          nodeSelector: null
           restartPolicy: OnFailure
           securityContext:
             sysctls:
               - name: net.ipv4.ip_unprivileged_port_start
                 value: "0"
           serviceAccountName: RELEASE-NAME
-          tolerations:
-            - effect: NoSchedule
-              key: environment
-              operator: Equal
-              value: test
+          tolerations: null
           topologySpreadConstraints:
             - labelSelector:
                 matchLabels:

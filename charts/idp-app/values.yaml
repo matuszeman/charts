@@ -10,11 +10,9 @@ affinity: {}
 #terminationGracePeriodSeconds: 30
 restartPolicy: null
 
-# Spot / OnDemand
-nodeCapacity:
-  type: Spot
-
+nodePool: null
 nodeSelector: {}
+tolerations: []
 
 topologySpreadConstraints:
   zone: true

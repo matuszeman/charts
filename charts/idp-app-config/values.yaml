@@ -9,8 +9,15 @@ global:
         #aws_region: eu-central-1
         domains:
           example.com: example.com
-        nodeSelector: {}
-        tolerations: {}
+        nodePools:
+          test1:
+            nodeSelector:
+              environment: test
+            tolerations:
+              - key: environment
+                operator: Equal
+                value: test
+                effect: NoSchedule
 
     defaults:
       imageRepository: docker.io

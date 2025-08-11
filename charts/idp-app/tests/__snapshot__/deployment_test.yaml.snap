@@ -222,18 +222,13 @@ should match snapshot with values-ci.yaml:
                   cpu: 100m
                   memory: 128Mi
           enableServiceLinks: false
-          nodeSelector:
-            environment: test
+          nodeSelector: null
           securityContext:
             sysctls:
               - name: net.ipv4.ip_unprivileged_port_start
                 value: "0"
           serviceAccountName: RELEASE-NAME-resource-suffix
-          tolerations:
-            - effect: NoSchedule
-              key: environment
-              operator: Equal
-              value: test
+          tolerations: null
           topologySpreadConstraints:
             - labelSelector:
                 matchLabels:
@@ -330,18 +325,13 @@ when multi deployment:
                   cpu: 100m
                   memory: 128Mi
           enableServiceLinks: false
-          nodeSelector:
-            environment: test
+          nodeSelector: null
           securityContext:
             sysctls:
               - name: net.ipv4.ip_unprivileged_port_start
                 value: "0"
           serviceAccountName: RELEASE-NAME
-          tolerations:
-            - effect: NoSchedule
-              key: environment
-              operator: Equal
-              value: test
+          tolerations: null
           topologySpreadConstraints:
             - labelSelector:
                 matchLabels:
@@ -402,18 +392,13 @@ when multi deployment:
                   cpu: 100m
                   memory: 128Mi
           enableServiceLinks: false
-          nodeSelector:
-            environment: test
+          nodeSelector: null
           securityContext:
             sysctls:
               - name: net.ipv4.ip_unprivileged_port_start
                 value: "0"
           serviceAccountName: RELEASE-NAME
-          tolerations:
-            - effect: NoSchedule
-              key: environment
-              operator: Equal
-              value: test
+          tolerations: null
           topologySpreadConstraints:
             - labelSelector:
                 matchLabels:

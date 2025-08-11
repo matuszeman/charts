@@ -49,19 +49,14 @@ when cronjob enabled:
                       cpu: 100m
                       memory: 128Mi
               enableServiceLinks: false
-              nodeSelector:
-                environment: test
+              nodeSelector: null
               restartPolicy: OnFailure
               securityContext:
                 sysctls:
                   - name: net.ipv4.ip_unprivileged_port_start
                     value: "0"
               serviceAccountName: RELEASE-NAME
-              tolerations:
-                - effect: NoSchedule
-                  key: environment
-                  operator: Equal
-                  value: test
+              tolerations: null
               topologySpreadConstraints:
                 - labelSelector:
                     matchLabels:

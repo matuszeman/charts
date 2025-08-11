@@ -1,5 +1,6 @@
 {{- if not $.Values.debug -}}
 {{- if $.Values.cronjob.enabled }}
+{{- $this := $.Values.cronjob }}
 {{- $deployments := (dict "" dict) }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
@@ -9,18 +10,21 @@ metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
-  {{- with $.Values.cronjob.annotations }}
+  {{- with $this.annotations }}
   annotations:
-    {{- toYaml $.Values.cronjob.annotations | nindent 4 }}
+    {{- toYaml $this.annotations | nindent 4 }}
   {{- end }}
 spec:
-  schedule: {{ required "cronjob.schedule required" $.Values.cronjob.schedule | quote }}
-  concurrencyPolicy: {{ $.Values.cronjob.concurrencyPolicy | required "cronjob.concurrencyPolicy required" | quote }}
-  {{- if $.Values.cronjob.startingDeadlineSeconds }}
-  startingDeadlineSeconds: {{ $.Values.cronjob.startingDeadlineSeconds }}
+  schedule: {{ required "cronjob.schedule required" $this.schedule | quote }}
+  {{- if hasKey $this "suspend" }}
+  suspend: {{ $this.suspend }}
   {{- end }}
-  successfulJobsHistoryLimit: {{ $.Values.cronjob.successfulJobsHistoryLimit }}
-  failedJobsHistoryLimit: {{ $.Values.cronjob.failedJobsHistoryLimit }}
+  concurrencyPolicy: {{ $this.concurrencyPolicy | required "cronjob.concurrencyPolicy required" | quote }}
+  {{- if $this.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ $this.startingDeadlineSeconds }}
+  {{- end }}
+  successfulJobsHistoryLimit: {{ $this.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $this.failedJobsHistoryLimit }}
   jobTemplate:
     metadata:
       labels:

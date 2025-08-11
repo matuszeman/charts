@@ -34,6 +34,7 @@ tests:
         startingDeadlineSeconds: 30
         failedJobsHistoryLimit: 10
         successfulJobsHistoryLimit: 5
+        suspend: true
     asserts:
       - isSubset:
           path: spec
@@ -42,6 +43,7 @@ tests:
             startingDeadlineSeconds: 30
             failedJobsHistoryLimit: 10
             successfulJobsHistoryLimit: 5
+            suspend: true
   - it: when annotations are set
     values:
       - values/cronjob.yaml

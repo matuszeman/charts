@@ -11,13 +11,15 @@ global:
         aws_region: eu-central-1
         domains:
           example.com: example.com
-        nodeSelector:
-          environment: test
-        tolerations:
-          - key: environment
-            operator: Equal
-            value: test
-            effect: NoSchedule
+        nodePools:
+          test1:
+            nodeSelector:
+              environment: test
+            tolerations:
+              - key: environment
+                operator: Equal
+                value: test
+                effect: NoSchedule
     defaults:
       imageRepository: private
       imagePullPolicy: IfNotPresent

@@ -30,8 +30,25 @@ spec:
   {{- if hasKey $this "parallelism" }}
   parallelism: {{ $this.parallelism }}
   {{- end }}
+  {{- if hasKey $this "suspend" }}
+  suspend: {{ $this.suspend }}
+  {{- end }}
+  {{- if hasKey $this "podReplacementPolicy" }}
+  podReplacementPolicy: {{ $this.podReplacementPolicy }}
+  {{- end }}
   {{- if hasKey $this "ttlSecondsAfterFinished" }}
   ttlSecondsAfterFinished: {{ $this.ttlSecondsAfterFinished }}
+  {{- end }}
+  {{- if hasKey $this "podFailurePolicy" }}
+  podFailurePolicy:
+    {{- toYaml $this.podFailurePolicy | nindent 4 }}
+  {{- end }}
+  {{- if hasKey $this "successPolicy" }}
+  successPolicy:
+    {{- toYaml $this.successPolicy | nindent 4 }}
+  {{- end }}
+  {{- if hasKey $this "backoffLimitPerIndex" }}
+  backoffLimitPerIndex: {{ $this.backoffLimitPerIndex }}
   {{- end }}
   template:
     {{- include "idp-app.podTemplate" (list $ $deploymentKey $deployment ) | nindent 4 }}
