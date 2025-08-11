@@ -13,23 +13,23 @@ tests:
           imageRepository: private
     asserts:
       - matchSnapshot: {}
-  - it: when nodoCapacity.type = OnDemand
+  - it: when nodePool is set
     values:
       - values/deployment.yaml
     set:
-      nodeCapacity:
-        type: OnDemand
+      nodePool: test1
     asserts:
-      - equal:
-          path: spec.template.spec.nodeSelector.capacity
-          value: on-demand
+      - isSubset:
+          path: spec.template.spec.nodeSelector
+          content:
+            environment: test
       - contains:
           path: spec.template.spec.tolerations
           content:
             effect: NoSchedule
-            key: capacity
+            key: environment
             operator: Equal
-            value: on-demand
+            value: test
   - it: when terminationGracePeriodSeconds is set
     values:
       - values/deployment.yaml

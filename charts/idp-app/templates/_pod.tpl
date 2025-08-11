@@ -2,6 +2,13 @@
 {{- $ := index . 0 -}}
 {{- $deploymentKey := index . 1 -}}
 {{- $deployment := index . 2 -}}
+{{- $cluster := index $.Values.global.idpAppConfig.clusters $.Values.global.cluster }}
+{{- $nodePool := dict "nodeSelector" dict "tolerations" list }}
+{{- if $.Values.nodePool }}
+{{- $clusterNodePool := index $cluster.nodePools $.Values.nodePool | required (printf "Nodepool %s not found in cluster config" $.Values.nodePool) }}
+{{- $_ := set $nodePool "nodeSelector" ($clusterNodePool.nodeSelector | default dict) }}
+{{- $_ = set $nodePool "tolerations" ($clusterNodePool.tolerations | default list) }}
+{{- end }}
 {{- $containers := mustMergeOverwrite (deepCopy $.Values.containers) (deepCopy (default dict $deployment.containers)) }}
 metadata:
   {{ $podAnnotations := merge (dict) $.Values.podAnnotations (fromYaml (include "idp-app.configsPodAnnotations" $)) }}
@@ -73,14 +80,18 @@ spec:
     {{- end }}
     {{- end }}
   nodeSelector:
-    {{- with (index $.Values.global.idpAppConfig.clusters $.Values.global.cluster).nodeSelector }}
-    {{- toYaml . | nindent 4 }}
+    {{- with $nodePool.nodeSelector }}
+    {{ toYaml . | nindent 4 }}
     {{- end }}
-    {{- if eq $.Values.nodeCapacity.type "OnDemand" }}
-    capacity: on-demand
+    {{- with $.Values.nodeSelector }}
+    {{ toYaml . | nindent 4 }}
     {{- end }}
-    {{- if $.Values.nodeSelector }}
-    {{- toYaml $.Values.nodeSelector | nindent 4 }}
+  tolerations:
+    {{- with $nodePool.tolerations }}
+    {{ toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $.Values.tolerations }}
+    {{ toYaml . | nindent 4 }}
     {{- end }}
   {{- with $.Values.affinity }}
   affinity:
@@ -103,15 +114,4 @@ spec:
         matchLabels:
           {{- include "idp-app.selectorLabels" (list $ $deploymentKey) | nindent 10 }}
     {{- end }}
-  tolerations:
-    {{- with (index $.Values.global.idpAppConfig.clusters $.Values.global.cluster).tolerations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- if eq $.Values.nodeCapacity.type "OnDemand" }}
-    - key: capacity
-      operator: Equal
-      value: on-demand
-      effect: NoSchedule
-    {{- end }}
-
 {{- end }}

@@ -20,6 +20,23 @@ tests:
         completions: 3
         parallelism: 2
         ttlSecondsAfterFinished: 3600
+        backoffLimitPerIndex: 3
+        podReplacementPolicy: "Failed"
+        suspend: true
+        successPolicy:
+          rules:
+            - succeededIndexes: 0,2-3
+              succeededCount: 1
+        podFailurePolicy:
+          rules:
+            - action: FailJob
+              onExitCodes:
+                containerName: main      # optional
+                operator: In             # one of: In, NotIn
+                values: [ 42 ]
+            - action: Ignore             # one of: Ignore, FailJob, Count
+              onPodConditions:
+                - type: DisruptionTarget   # indicates Pod disruption
     asserts:
       - matchSnapshot: { }
   - it: default restartPolicy
