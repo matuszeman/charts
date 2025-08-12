@@ -1,4 +1,6 @@
 {{- if .Values.debug }}
+templates:
+  fullname: {{ template "idp-app.fullname" . }}
 Release:
   {{- toYaml .Release | nindent 2 }}
 Chart:
