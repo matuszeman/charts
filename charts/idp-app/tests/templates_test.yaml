@@ -1,0 +1,15 @@
+suite: templates
+values:
+  - ./values/minimum.yaml
+templates:
+  - debug.yaml
+tests:
+  - it: resourceNameSuffix is templated
+    set:
+      debug: true
+      resourceNameSuffix: "suffix-{{ .Values.appVersion }}"
+    asserts:
+      - isSubset:
+          path: templates
+          content:
+            fullname: RELEASE-NAME-suffix-0.1.0

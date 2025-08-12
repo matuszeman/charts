@@ -12,7 +12,7 @@ If release name contains chart name it will be used as a full name.
 */}}
 {{- define "idp-app.fullname" -}}
 {{- if .Values.resourceNameSuffix }}
-{{- printf "%s-%s" .Release.Name .Values.resourceNameSuffix | trunc 63 | trimSuffix "-" }}
+{{- printf "%s-%s" .Release.Name (tpl .Values.resourceNameSuffix .) | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- end }}
@@ -50,13 +50,13 @@ Selector labels
 {{- $ := index . 0 -}}
 {{- $deploymentName := index . 1 -}}
 app.kubernetes.io/name: {{ include "idp-app.name" $ }}
-app.kubernetes.io/instance: {{ $.Release.Name }}{{ if $.Values.resourceNameSuffix }}-{{ $.Values.resourceNameSuffix }}{{ end }}{{ if $deploymentName }}-{{ $deploymentName }}{{ end }}
+app.kubernetes.io/instance: {{ include "idp-app.fullname" $ }}{{ if $deploymentName }}-{{ $deploymentName }}{{ end }}
 {{- end }}
 
 {{- define "idp-app.oauth2ProxySelectorLabels" -}}
 {{- $ := index . 0 -}}
 app.kubernetes.io/name: {{ include "idp-app.name" $ }}-oauth2-proxy
-app.kubernetes.io/instance: {{ $.Release.Name }}{{ if $.Values.resourceNameSuffix }}-{{ $.Values.resourceNameSuffix }}{{ end }}
+app.kubernetes.io/instance: {{ include "idp-app.fullname" $ }}
 {{- end }}
 
 
