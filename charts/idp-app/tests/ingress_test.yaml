@@ -40,7 +40,6 @@ tests:
           host: testapp-external
           oauth2ProxyAuth:
             enabled: true
-            url: https://auth.example.com
             allowedGroups:
               - one@example.com
         internal:
@@ -70,7 +69,7 @@ tests:
           path: metadata.annotations
           content:
             nginx.ingress.kubernetes.io/enable-access-log: "false"
-  - it: when oauth2ProxyAuth is enabled on path
+  - it: when oauth2ProxyAuth is enabled
     values:
       - values/deployment.yaml
       - values/service.yaml
@@ -79,11 +78,9 @@ tests:
       ingress:
         oauth2ProxyAuth:
           enabled: true
-          service:
-            name: my-oauth2-proxy
     asserts:
       - matchSnapshot: {}
-  - it: when oauth2ProxyAuth is enabled on url
+  - it: when oauth2ProxyAuth is enabled with allowedGroups
     values:
       - values/deployment.yaml
       - values/service.yaml
@@ -92,13 +89,12 @@ tests:
       ingress:
         oauth2ProxyAuth:
           enabled: true
-          url: https://auth.example.com
           allowedGroups:
             - one@example.com
             - two@example.com
     asserts:
       - matchSnapshot: { }
-  - it: when oauth2ProxyAuth with externalUrl
+  - it: when oauth2ProxyAuth is enabled with custom clusterAppName
     values:
       - values/deployment.yaml
       - values/service.yaml
@@ -107,48 +103,9 @@ tests:
       ingress:
         oauth2ProxyAuth:
           enabled: true
-          url: http://oauth2proxy.devsup.svc.cluster.local
-          urlExternal: https://auth.example.com
+          appName: oauth2proxy2
     asserts:
       - matchSnapshot: { }
-  - it: when oauth2ProxyAuth with templated externalUrl, then $ global var is resolvable
-    values:
-      - values/deployment.yaml
-      - values/service.yaml
-      - values/ingress-minimum.yaml
-    set:
-      ingress:
-        oauth2ProxyAuth:
-          enabled: true
-          url: http://oauth2proxy.devsup.svc.cluster.local
-          urlExternal: https://auth.{{ $.Values.global.cluster }}.example.com
-    asserts:
-      - isSubset:
-          path: metadata.annotations
-          content:
-            nginx.ingress.kubernetes.io/auth-signin: "https://auth.test.example.com/oauth2/start?rd=https://$host$request_uri"
-  - it: when oauth2ProxyAuth with templated externalUrl, then .cluster var is resolvable
-    values:
-      - values/deployment.yaml
-      - values/service.yaml
-      - values/ingress-minimum.yaml
-    set:
-      global:
-        idpAppConfig:
-          clusters:
-            test:
-              oauth2ProxyAuth:
-                urlExternal: https://auth.test-222.example.com
-      ingress:
-        oauth2ProxyAuth:
-          enabled: true
-          url: http://oauth2proxy.devsup.svc.cluster.local
-          urlExternal: "{{ .cluster.oauth2ProxyAuth.urlExternal }}"
-    asserts:
-      - isSubset:
-          path: metadata.annotations
-          content:
-            nginx.ingress.kubernetes.io/auth-signin: "https://auth.test-222.example.com/oauth2/start?rd=https://$host$request_uri"
   - it: when both service.enabled and ingress.service is set, then fail
     values:
       - values/deployment.yaml

@@ -11,6 +11,23 @@ global:
         aws_region: eu-central-1
         domains:
           example.com: example.com
+        apps:
+          oauth2proxy:
+            authUrl: http://oauth2proxy.auth.svc.cluster.local
+            signinUrl: https://oauth2proxy.auth.example.com
+            # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
+            responseHeaders:
+              - Auth-Proxy-Email
+              - Auth-Proxy-Groups
+            path: /oauth2
+          oauth2proxy2:
+            authUrl: http://oauth2proxy2.auth.svc.cluster.local
+            signinUrl: https://oauth2proxy2.auth.example.com
+            # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
+            responseHeaders:
+              - Auth-Proxy-Email
+              - Auth-Proxy-Groups
+            path: /oauth2
         nodePools:
           test1:
             nodeSelector:
@@ -37,15 +54,9 @@ global:
           secretName:
         oauth2ProxyAuth:
           enabled: false
-          url: null
-          # overwrites url for signin url when specified
-          urlExternal: null
+          appName: oauth2proxy
           # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
           allowedGroups: null # []
-          responseHeaders:
-            - Auth-Proxy-Email
-            - Auth-Proxy-Groups
-          path: /oauth2
           service:
             name: null
             port: 80

@@ -1,5 +1,18 @@
 prometheus:
   port: prometheus-exporter
   path: /metrics
+  params:
+    module: default
+    target: http://localhost:8060/event/channels-stats
   serviceMonitor:
     enabled: true
+    metricRelabelings:
+      - sourceLabels: [__name__]
+        regex: '(container_cpu_usage_seconds_total|container_memory_usage_bytes)'
+        action: keep
+      - sourceLabels: [container]
+        regex: 'POD'
+        action: drop
+      - sourceLabels: [__name__]
+        targetLabel: custom_metric_name
+        replacement: 'my_${1}'

@@ -11,7 +11,23 @@ snapshot:
       name: RELEASE-NAME
     spec:
       endpoints:
-        - path: /metrics
+        - metricRelabelings:
+            - action: keep
+              regex: (container_cpu_usage_seconds_total|container_memory_usage_bytes)
+              sourceLabels:
+                - __name__
+            - action: drop
+              regex: POD
+              sourceLabels:
+                - container
+            - replacement: my_${1}
+              sourceLabels:
+                - __name__
+              targetLabel: custom_metric_name
+          params:
+            module: default
+            target: http://localhost:8060/event/channels-stats
+          path: /metrics
           targetPort: prometheus-exporter
       namespaceSelector:
         matchNames:
@@ -26,14 +42,30 @@ when multi deployment:
     kind: ServiceMonitor
     metadata:
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-one
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
       name: RELEASE-NAME-one
     spec:
       endpoints:
-        - path: /metrics
+        - metricRelabelings:
+            - action: keep
+              regex: (container_cpu_usage_seconds_total|container_memory_usage_bytes)
+              sourceLabels:
+                - __name__
+            - action: drop
+              regex: POD
+              sourceLabels:
+                - container
+            - replacement: my_${1}
+              sourceLabels:
+                - __name__
+              targetLabel: custom_metric_name
+          params:
+            module: default
+            target: http://localhost:8060/event/channels-stats
+          path: /metrics
           targetPort: prometheus-exporter
       namespaceSelector:
         matchNames:
@@ -47,14 +79,30 @@ when multi deployment:
     kind: ServiceMonitor
     metadata:
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-two
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
       name: RELEASE-NAME-two
     spec:
       endpoints:
-        - path: /metrics
+        - metricRelabelings:
+            - action: keep
+              regex: (container_cpu_usage_seconds_total|container_memory_usage_bytes)
+              sourceLabels:
+                - __name__
+            - action: drop
+              regex: POD
+              sourceLabels:
+                - container
+            - replacement: my_${1}
+              sourceLabels:
+                - __name__
+              targetLabel: custom_metric_name
+          params:
+            module: default
+            target: http://localhost:8060/event/channels-stats
+          path: /metrics
           targetPort: prometheus-exporter
       namespaceSelector:
         matchNames:

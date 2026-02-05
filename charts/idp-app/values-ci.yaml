@@ -57,7 +57,7 @@ global:
       configs:
         annotations: {}
           # we want argocd to sync configs first, then the rest of deployment
-          #argocd.argoproj.io/sync-wave: "-10"
+        #argocd.argoproj.io/sync-wave: "-10"
         externalSecret:
           # reload of external-secret using annotation stopped working with refreshInterval=0
           # we set it to very long period now, so it does not reload, but annotations work
@@ -77,6 +77,9 @@ service:
     - name: anotherport
       port: 9000
       targetPort: anotherport
+
+headlessService:
+  enabled: true
 
 deployment:
   enabled: true
@@ -190,15 +193,15 @@ containers:
       scripts: /scripts
       hashed-cm: /hashed-cm
       hashed-aws-secret: /hashed-aws-secret
-#      sealed-secret: /sealed-secrets
+    #      sealed-secret: /sealed-secrets
 
     configFiles:
       php:
         php.ini: /etc/php.ini
       not-managed-cm:
         example.txt: /tmp/example.txt
-#      sealed-secret:
-#        key1: /tmp/secret.txt
+    #      sealed-secret:
+    #        key1: /tmp/secret.txt
 
     resources:
       limits:
