@@ -5,12 +5,12 @@ type: application
 version: 1.0.0
 dependencies:
   - name: idp-app-config
-    repository: 'file://../idp-app-config'
+    repository: 'file://../../examples/idp-app-config'
     version: 4.x.x
     import-values:
       - child: global
         parent: global
   - name: idp-app
     alias: app
-    repository: 'file://../idp-app'
+    repository: 'file://../../charts/idp-app'
     version: 4.x.x
