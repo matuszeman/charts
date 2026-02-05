@@ -54,7 +54,7 @@ spec:
     {{- if empty (include "idp-app.isConfigUsedInContainersVolumeMounts" (list $configKey $containers)) }}
     {{- else }}
     - name: config-{{ $configKey }}
-      {{- if or $v.fromSecret $v.awsSecret $v.sealedSecret }}
+      {{- if or (kindIs "map" .secret) $v.fromSecret $v.awsSecret $v.sealedSecret }}
       secret:
         secretName: {{ include "idp-app.configName" (list $ $configKey) }}
         {{- with $v.defaultMode }}
@@ -67,7 +67,7 @@ spec:
         defaultMode: {{ . }}
         {{- end }}
       {{- else }}
-      {{- required ( printf "configs.%s does not specify fromConfigMap, fromSecret, awsSecret, sealedSecret nor content" $configKey ) nil }}
+      {{- required ( printf "configs.%s does not specify secret, fromConfigMap, fromSecret, awsSecret, sealedSecret nor content" $configKey ) nil }}
       {{- end }}
     {{- end }}
     {{- end }}
