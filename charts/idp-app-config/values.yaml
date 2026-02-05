@@ -1,14 +1,31 @@
 global:
   idpAppConfig:
     imageRepositories:
+      private: 123456.dkr.ecr.eu-central-1.amazonaws.com
+      public: public.ecr.aws/123456
       docker.io: "docker.io"
-      quay.io: "quay.io"
-
     clusters:
       test:
-        #aws_region: eu-central-1
+        aws_region: eu-central-1
         domains:
           example.com: example.com
+        apps:
+          oauth2proxy:
+            authUrl: http://oauth2proxy.auth.svc.cluster.local
+            signinUrl: https://oauth2proxy.auth.example.com
+            # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
+            responseHeaders:
+              - Auth-Proxy-Email
+              - Auth-Proxy-Groups
+            path: /oauth2
+          oauth2proxy2:
+            authUrl: http://oauth2proxy2.auth.svc.cluster.local
+            signinUrl: https://oauth2proxy2.auth.example.com
+            # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
+            responseHeaders:
+              - Auth-Proxy-Email
+              - Auth-Proxy-Groups
+            path: /oauth2
         nodePools:
           test1:
             nodeSelector:
@@ -18,14 +35,13 @@ global:
                 operator: Equal
                 value: test
                 effect: NoSchedule
-
     defaults:
-      imageRepository: docker.io
+      imageRepository: private
       imagePullPolicy: IfNotPresent
       ingress:
         enabled: false
-        className: traefik-private
-        certManagerClusterIssuer: letsencrypt
+        className: nginx-internal
+        certManagerClusterIssuer: default
         #  fcgi:
         #    documentRoot: /html
         path: /
@@ -36,27 +52,17 @@ global:
           secretName:
         oauth2ProxyAuth:
           enabled: false
-          url: null
-          # overwrites url for signin url when specified
-          urlExternal: null
+          appName: oauth2proxy
           # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
           allowedGroups: null # []
-          responseHeaders:
-            - Auth-Proxy-Email
-            - Auth-Proxy-Groups
-          path: /oauth2
           service:
             name: null
             port: 80
         accessLog:
           enabled: true
       configs:
-        annotations: {}
-          # we want argocd to sync configs first, then the rest of deployment
-          #argocd.argoproj.io/sync-wave: "-10"
+        annotations: { }
+        # we want argocd to sync configs first, then the rest of deployment
+        #argocd.argoproj.io/sync-wave: "-10"
         externalSecret:
-          # reload of external-secret using annotation stopped working with refreshInterval=0
-          # we set it to very long period now, so it does not reload, but annotations work
-          # https://github.com/external-secrets/external-secrets/pull/4086
-          # https://github.com/external-secrets/external-secrets/issues/3979
           refreshInterval: "99999h"

@@ -41,7 +41,7 @@ when multi deployment:
     kind: Service
     metadata:
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-one
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
@@ -77,7 +77,7 @@ when multi deployment:
     kind: Service
     metadata:
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-two
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
@@ -114,7 +114,7 @@ when multi deployment with overwrite:
     kind: Service
     metadata:
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-one
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
@@ -150,7 +150,7 @@ when multi deployment with overwrite:
     kind: Service
     metadata:
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-two
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0

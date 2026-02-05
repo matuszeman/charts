@@ -5,6 +5,11 @@ should match snapshot with values-ci.yaml:
       SCRIPT_FILENAME: /html$fastcgi_script_name
     kind: ConfigMap
     metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
       name: RELEASE-NAME-resource-suffix-ingress-fcgi
   2: |
     apiVersion: networking.k8s.io/v1
@@ -82,10 +87,10 @@ when ingress and ingresses are set:
       annotations:
         cert-manager.io/cluster-issuer: default
         nginx.ingress.kubernetes.io/auth-response-headers: Auth-Proxy-Email,Auth-Proxy-Groups
-        nginx.ingress.kubernetes.io/auth-signin: https://auth.example.com/oauth2/start?rd=https://$host$request_uri
+        nginx.ingress.kubernetes.io/auth-signin: https://oauth2proxy.auth.example.com/oauth2/start?rd=https://$host$request_uri
         nginx.ingress.kubernetes.io/auth-snippet: |
           proxy_set_header X-Forwarded-Host testapp-external.example.com;
-        nginx.ingress.kubernetes.io/auth-url: https://auth.example.com/oauth2/auth?allowed_groups=one@example.com
+        nginx.ingress.kubernetes.io/auth-url: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth?allowed_groups=one@example.com
         nginx.ingress.kubernetes.io/enable-access-log: "true"
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
@@ -152,7 +157,7 @@ when multi deployment:
         cert-manager.io/cluster-issuer: default
         nginx.ingress.kubernetes.io/enable-access-log: "true"
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-one
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
@@ -182,7 +187,7 @@ when multi deployment:
         cert-manager.io/cluster-issuer: default
         nginx.ingress.kubernetes.io/enable-access-log: "true"
       labels:
-        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/instance: RELEASE-NAME-two
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
@@ -204,7 +209,7 @@ when multi deployment:
         - hosts:
             - two.example.com
           secretName: RELEASE-NAME-two-ingress-tls
-when oauth2ProxyAuth is enabled on path:
+when oauth2ProxyAuth is enabled:
   1: |
     apiVersion: networking.k8s.io/v1
     kind: Ingress
@@ -212,10 +217,10 @@ when oauth2ProxyAuth is enabled on path:
       annotations:
         cert-manager.io/cluster-issuer: default
         nginx.ingress.kubernetes.io/auth-response-headers: Auth-Proxy-Email,Auth-Proxy-Groups
-        nginx.ingress.kubernetes.io/auth-signin: https://$host/oauth2/start?rd=https://$host$request_uri
+        nginx.ingress.kubernetes.io/auth-signin: https://oauth2proxy.auth.example.com/oauth2/start?rd=https://$host$request_uri
         nginx.ingress.kubernetes.io/auth-snippet: |
           proxy_set_header X-Forwarded-Host testapp.example.com;
-        nginx.ingress.kubernetes.io/auth-url: https://$host/oauth2/auth
+        nginx.ingress.kubernetes.io/auth-url: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth
         nginx.ingress.kubernetes.io/enable-access-log: "true"
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
@@ -240,34 +245,7 @@ when oauth2ProxyAuth is enabled on path:
         - hosts:
             - testapp.example.com
           secretName: RELEASE-NAME-ingress-tls
-  2: |
-    apiVersion: networking.k8s.io/v1
-    kind: Ingress
-    metadata:
-      labels:
-        app.kubernetes.io/instance: RELEASE-NAME
-        app.kubernetes.io/managed-by: Helm
-        app.kubernetes.io/name: app-name
-        app.kubernetes.io/version: 0.1.0
-      name: RELEASE-NAME-oauth2-proxy
-    spec:
-      ingressClassName: nginx-internal
-      rules:
-        - host: testapp.example.com
-          http:
-            paths:
-              - backend:
-                  service:
-                    name: my-oauth2-proxy
-                    port:
-                      number: 80
-                path: /oauth2
-                pathType: Prefix
-      tls:
-        - hosts:
-            - testapp.example.com
-          secretName: RELEASE-NAME-ingress-tls
-when oauth2ProxyAuth is enabled on url:
+when oauth2ProxyAuth is enabled with allowedGroups:
   1: |
     apiVersion: networking.k8s.io/v1
     kind: Ingress
@@ -275,10 +253,10 @@ when oauth2ProxyAuth is enabled on url:
       annotations:
         cert-manager.io/cluster-issuer: default
         nginx.ingress.kubernetes.io/auth-response-headers: Auth-Proxy-Email,Auth-Proxy-Groups
-        nginx.ingress.kubernetes.io/auth-signin: https://auth.example.com/oauth2/start?rd=https://$host$request_uri
+        nginx.ingress.kubernetes.io/auth-signin: https://oauth2proxy.auth.example.com/oauth2/start?rd=https://$host$request_uri
         nginx.ingress.kubernetes.io/auth-snippet: |
           proxy_set_header X-Forwarded-Host testapp.example.com;
-        nginx.ingress.kubernetes.io/auth-url: https://auth.example.com/oauth2/auth?allowed_groups=one@example.com,two@example.com
+        nginx.ingress.kubernetes.io/auth-url: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth?allowed_groups=one@example.com,two@example.com
         nginx.ingress.kubernetes.io/enable-access-log: "true"
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
@@ -303,7 +281,7 @@ when oauth2ProxyAuth is enabled on url:
         - hosts:
             - testapp.example.com
           secretName: RELEASE-NAME-ingress-tls
-when oauth2ProxyAuth with externalUrl:
+when oauth2ProxyAuth is enabled with custom clusterAppName:
   1: |
     apiVersion: networking.k8s.io/v1
     kind: Ingress
@@ -311,10 +289,10 @@ when oauth2ProxyAuth with externalUrl:
       annotations:
         cert-manager.io/cluster-issuer: default
         nginx.ingress.kubernetes.io/auth-response-headers: Auth-Proxy-Email,Auth-Proxy-Groups
-        nginx.ingress.kubernetes.io/auth-signin: https://auth.example.com/oauth2/start?rd=https://$host$request_uri
+        nginx.ingress.kubernetes.io/auth-signin: https://oauth2proxy2.auth.example.com/oauth2/start?rd=https://$host$request_uri
         nginx.ingress.kubernetes.io/auth-snippet: |
           proxy_set_header X-Forwarded-Host testapp.example.com;
-        nginx.ingress.kubernetes.io/auth-url: http://oauth2proxy.devsup.svc.cluster.local/oauth2/auth
+        nginx.ingress.kubernetes.io/auth-url: http://oauth2proxy2.auth.svc.cluster.local/oauth2/auth
         nginx.ingress.kubernetes.io/enable-access-log: "true"
       labels:
         app.kubernetes.io/instance: RELEASE-NAME

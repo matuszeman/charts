@@ -1,0 +1,10 @@
+{{- $currentScope := . }}
+configFiles:
+{{- range $path, $_ :=  .Files.Glob  "configs/**.yaml" }}
+  {{- with $currentScope }}
+  {{- $content := tpl (.Files.Get $path) $ }}
+  {{- $_ = set $.Values.global "testxxx" $content }}
+  {{ $path }}: |
+    {{ $content | nindent 4 }}
+  {{- end }}
+{{- end }}

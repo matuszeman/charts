@@ -1,8 +1,8 @@
 {{- if not $.Values.debug -}}
 {{- $ingresses := merge (dict "" $.Values.ingress) $.Values.ingresses }}
 {{- range $ingressKey, $ingressSpec := $ingresses }}
+{{- if $ingressSpec.enabled -}}
 {{- $ingress := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.ingress) (deepCopy $ingressSpec) }}
-{{- if $ingress.enabled -}}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
@@ -17,8 +17,8 @@
 {{- fail "ingress: service must be enabled" }}
 {{- end }}
 {{- $ingressName := join "-" (compact (list $deploymentName $ingressKey)) }}
-{{- $cluster := required "cluster does not exist in cluster list" (index $.Values.global.idpAppConfig.clusters $.Values.global.cluster) }}
-{{- $domain := required "domain does not exist in global.idpAppConfig.cluster.CLUSTER.domains" (index (required "$cluster.domains required" $cluster.domains) (required "ingress.domain required" $ingress.domain)) }}
+{{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
+{{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $ingress.domain) }}
 {{- $host := (printf "%s.%s" $ingress.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- $ingressClassName := required "ingress.className required" $ingress.className }}
 {{- $svcPort := hasKey $ingress "fcgi" | ternary "fcgi" "http" }}
@@ -28,6 +28,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ $fcgiConfigMapName }}
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
 data:
   SCRIPT_FILENAME: {{ required "fcgi.documentRoot required" $ingress.fcgi.documentRoot }}$fastcgi_script_name
 ---
@@ -37,7 +39,7 @@ kind: Ingress
 metadata:
   name: {{ $ingressName }}
   labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
   annotations:
     cert-manager.io/cluster-issuer: {{ $ingress.certManagerClusterIssuer }}
     {{- if eq $svcPort "fcgi" }}
@@ -53,12 +55,13 @@ metadata:
     nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
     {{- end }}
     {{- if $ingress.oauth2ProxyAuth.enabled }}
-    {{- $_ := required "ingress.oauth2ProxyAuth.path required" $ingress.oauth2ProxyAuth.path }}
-    {{- $authUrl       := ternary (printf "https://$host%s" $ingress.oauth2ProxyAuth.path) (printf "%s%s" $ingress.oauth2ProxyAuth.url $ingress.oauth2ProxyAuth.path) (empty $ingress.oauth2ProxyAuth.url) }}
-    {{- $authSigninUrl := ternary (printf "https://$host%s" $ingress.oauth2ProxyAuth.path) (printf "%s%s" (default $ingress.oauth2ProxyAuth.url $ingress.oauth2ProxyAuth.urlExternal) $ingress.oauth2ProxyAuth.path) (empty $ingress.oauth2ProxyAuth.url) }}
-    nginx.ingress.kubernetes.io/auth-url: "{{ $authUrl }}/auth{{ if $ingress.oauth2ProxyAuth.allowedGroups }}?allowed_groups={{ join "," (required "ingress.oauth2ProxyAuth.allowedGroups required" $ingress.oauth2ProxyAuth.allowedGroups) }}{{ end }}"
-    nginx.ingress.kubernetes.io/auth-signin: {{ tpl (printf "%s/start?rd=https://$host$request_uri" $authSigninUrl) (merge (mustDeepCopy $) (dict "cluster" $cluster)) }}
-    nginx.ingress.kubernetes.io/auth-response-headers: {{ join "," $ingress.oauth2ProxyAuth.responseHeaders | quote}}
+    {{- $oauth2ProxyApp := include "idp-app.clusterConfigMapValue" (list $ "apps" $ingress.oauth2ProxyAuth.appName) | fromYaml }}
+    {{- $_ := $oauth2ProxyApp.path | required "oauth2proxy: path required" }}
+    {{- $authUrl       := printf "%s%s" ($oauth2ProxyApp.authUrl | required "oauth2proxy: authUrl required") $oauth2ProxyApp.path }}
+    {{- $authSigninUrl := printf "%s%s" ($oauth2ProxyApp.signinUrl | required "oauth2proxy: signinUrl required") $oauth2ProxyApp.path }}
+    nginx.ingress.kubernetes.io/auth-url: "{{ $authUrl }}/auth{{ if $ingress.oauth2ProxyAuth.allowedGroups }}?allowed_groups={{ join "," $ingress.oauth2ProxyAuth.allowedGroups }}{{ end }}"
+    nginx.ingress.kubernetes.io/auth-signin: {{ tpl (printf "%s/start?rd=https://$host$request_uri" $authSigninUrl) $ | quote }}
+    nginx.ingress.kubernetes.io/auth-response-headers: {{ join "," $oauth2ProxyApp.responseHeaders | quote}}
     # Set X-Forwarded-Host to auth request headers so this host appears in oauth2proxy logs
     nginx.ingress.kubernetes.io/auth-snippet: |
       proxy_set_header X-Forwarded-Host {{ $host }};
@@ -88,31 +91,6 @@ spec:
                 port:
                   number: {{ $backendRef.port | required "ingress: service.port required" }}
 ---
-{{- if and $ingress.oauth2ProxyAuth.enabled (empty $ingress.oauth2ProxyAuth.url) }}
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: {{ $ingressName }}-oauth2-proxy
-  labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
-spec:
-  ingressClassName: {{ $ingressClassName }}
-  tls:
-    - hosts:
-        - {{ $host | quote }}
-      secretName: {{ $ingressName }}-ingress-tls
-  rules:
-    - host: {{ $host | quote }}
-      http:
-        paths:
-          - path: {{ required "ingress.oauth2ProxyAuth.path required" $ingress.oauth2ProxyAuth.path | quote }}
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ required "ingress.oauth2ProxyAuth.service.name required" $ingress.oauth2ProxyAuth.service.name }}
-                port:
-                  number: {{ required "ingress.oauth2ProxyAuth.service.port required" $ingress.oauth2ProxyAuth.service.port }}
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

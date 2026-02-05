@@ -73,6 +73,36 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].image
           value: public.ecr.aws/123456/public-image:0.1.0
+  - it: deployment strategy RollingUpdate
+    values:
+      - values/deployment.yaml
+    set:
+      deployment:
+        strategy:
+          type: RollingUpdate
+    asserts:
+      - equal:
+          path: spec.strategy
+          value:
+            type: RollingUpdate
+  - it: deployment strategy RollingUpdate with spec
+    values:
+      - values/deployment.yaml
+    set:
+      deployment:
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxUnavailable: 1
+            maxSurge: 2
+    asserts:
+      - isSubset:
+          path: spec.strategy
+          content:
+            type: RollingUpdate
+            rollingUpdate:
+              maxUnavailable: 1
+              maxSurge: 2
   - it: deployment strategy Recreate
     values:
       - values/deployment.yaml
@@ -85,6 +115,7 @@ tests:
           path: spec.strategy
           value:
             type: Recreate
+            rollingUpdate: null
   - it: when no deployment strategy is defined
     values:
       - values/deployment.yaml

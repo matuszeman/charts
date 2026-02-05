@@ -1,7 +1,8 @@
 {{- if not .Values.debug -}}
+{{- if not (empty .Values.configs) }}
 {{- $values := .Values }}
 {{- $defaults := $values.global.idpAppConfig.defaults }}
-{{- $cluster := required "cluster does not exist in cluster list" (index .Values.global.idpAppConfig.clusters .Values.global.cluster) }}
+{{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- if or .fromSecret .fromConfigMap }}
@@ -89,9 +90,15 @@ metadata:
   {{- end }}
 data:
 {{- range $contentKey, $v := $configSpec.content }}
-  {{- $rawValue := $v | required (printf "configs.%s.content.%s required" $configKey $contentKey ) | toString }}
+  {{- $rawValue := $v | required (printf "configs.%s.content.%s required" $configKey $contentKey ) }}
+  {{- $strValue := "" }}
+  {{- if kindIs "map" $rawValue }}
+    {{- $strValue = $rawValue | toYaml }}
+  {{- else }}
+    {{- $strValue = $rawValue | toString }}
+  {{- end }}
   {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
-  {{- $val := ($configSpec.templated | default false) | ternary (tpl $rawValue $tplCtx) $rawValue }}
+  {{- $val := ($configSpec.templated | default false) | ternary (tpl $strValue $tplCtx) $strValue }}
   {{ $contentKey }}:
     {{- toYaml $val | nindent 4 }}
 {{- end }}
@@ -114,10 +121,11 @@ spec:
   provider:
     aws:
       service: SecretsManager
-      region: {{ required "$cluster.aws_region required" $cluster.aws_region }}
+      region: {{ $cluster.aws_region | required "$cluster.aws_region required" }}
       auth:
         jwt:
           serviceAccountRef:
             name: {{ include "idp-app.serviceAccountName" $ }}
+{{- end }}
 {{- end }}
 {{- end }}

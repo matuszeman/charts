@@ -363,19 +363,37 @@ tests:
           values:
             some: value
           content:
-            key1: |-
-              release: {{ .Release.Name }}
-              configSpec.values.some: {{ .configSpec.values.some }}
-              configKey: {{ .configKey }}
-              contentKey: {{ .contentKey }}
+            str: |-
+              configKey: '{{ .configKey }}'
+              configSpec:
+                values:
+                  some: '{{ .configSpec.values.some }}'
+              contentKey: '{{ .contentKey }}'
+              release: '{{ .Release.Name }}'
+            yaml:
+              configKey: '{{ .configKey }}'
+              configSpec:
+                values:
+                  some: '{{ .configSpec.values.some }}'
+              contentKey: '{{ .contentKey }}'
+              release: '{{ .Release.Name }}'
     asserts:
       - equal:
           path: data
           value:
-            key1: |-
-              release: RELEASE-NAME
-              configSpec.values.some: value
-              configKey: cm
-              contentKey: key1
+            str: |-
+              configKey: 'cm'
+              configSpec:
+                values:
+                  some: 'value'
+              contentKey: 'str'
+              release: 'RELEASE-NAME'
+            yaml: |-
+              configKey: 'cm'
+              configSpec:
+                values:
+                  some: 'value'
+              contentKey: 'yaml'
+              release: 'RELEASE-NAME'
         template: configs.yaml
         documentIndex: 0

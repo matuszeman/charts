@@ -7,6 +7,8 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: {{ $deploymentName }}
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
 spec:
   {{- if or (kindIs "string" $.Values.podDisruptionBudget.maxUnavailable) (kindIs "float64" $.Values.podDisruptionBudget.maxUnavailable) }}
   maxUnavailable: {{ $.Values.podDisruptionBudget.maxUnavailable }}

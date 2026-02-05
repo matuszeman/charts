@@ -9,7 +9,7 @@ kind: Job
 metadata:
   name: {{ $deploymentName }}
   labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
   {{- with $this.annotations }}
   annotations:
     {{- toYaml $this.annotations | nindent 4 }}

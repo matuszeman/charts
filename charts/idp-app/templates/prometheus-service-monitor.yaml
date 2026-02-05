@@ -12,16 +12,24 @@ kind: ServiceMonitor
 metadata:
   name: {{ $deploymentName }}
   labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
 spec:
   endpoints:
     - targetPort: {{ $.Values.prometheus.port | required "prometheus.port required" }}
-      {{- if $.Values.prometheus.serviceMonitor.interval }}
-      interval: {{ $.Values.prometheus.serviceMonitor.interval }}
+      {{- with $.Values.prometheus.serviceMonitor.interval }}
+      interval: {{ . }}
       {{- end }}
       path: {{ $.Values.prometheus.path | required "prometheus.path required" }}
-      {{- if $.Values.prometheus.serviceMonitor.scrapeTimeout }}
-      scrapeTimeout: {{ $.Values.prometheus.serviceMonitor.scrapeTimeout }}
+      {{- with $.Values.prometheus.params }}
+      params:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.prometheus.serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
+      {{- end }}
+      {{- with $.Values.prometheus.serviceMonitor.metricRelabelings }}
+      metricRelabelings:
+        {{- toYaml . | nindent 8 }}
       {{- end }}
   namespaceSelector:
     matchNames:

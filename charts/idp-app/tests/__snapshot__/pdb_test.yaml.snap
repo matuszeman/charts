@@ -3,6 +3,11 @@ should match snapshot with values-ci.yaml:
     apiVersion: policy/v1
     kind: PodDisruptionBudget
     metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-resource-suffix
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
       name: RELEASE-NAME-resource-suffix
     spec:
       maxUnavailable: 0
@@ -15,6 +20,11 @@ when multi deployment:
     apiVersion: policy/v1
     kind: PodDisruptionBudget
     metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-one
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
       name: RELEASE-NAME-one
     spec:
       minAvailable: 50%
@@ -26,6 +36,11 @@ when multi deployment:
     apiVersion: policy/v1
     kind: PodDisruptionBudget
     metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-two
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
       name: RELEASE-NAME-two
     spec:
       minAvailable: 50%

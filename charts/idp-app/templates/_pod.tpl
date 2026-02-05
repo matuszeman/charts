@@ -1,11 +1,10 @@
 {{- define "idp-app.podTemplate" -}}
-{{- $ := index . 0 -}}
-{{- $deploymentKey := index . 1 -}}
-{{- $deployment := index . 2 -}}
-{{- $cluster := index $.Values.global.idpAppConfig.clusters $.Values.global.cluster }}
+{{- $ := index . 0 }}
+{{- $deploymentKey := index . 1 }}
+{{- $deployment := index . 2 }}
 {{- $nodePool := dict "nodeSelector" dict "tolerations" list }}
 {{- if $.Values.nodePool }}
-{{- $clusterNodePool := index $cluster.nodePools $.Values.nodePool | required (printf "Nodepool %s not found in cluster config" $.Values.nodePool) }}
+{{- $clusterNodePool := include "idp-app.clusterConfigMapValue" (list $ "nodePools" $.Values.nodePool) | fromYaml }}
 {{- $_ := set $nodePool "nodeSelector" ($clusterNodePool.nodeSelector | default dict) }}
 {{- $_ = set $nodePool "tolerations" ($clusterNodePool.tolerations | default list) }}
 {{- end }}

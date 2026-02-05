@@ -12,7 +12,7 @@ kind: Service
 metadata:
   name: {{ $deploymentName }}
   labels:
-      {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
 spec:
   type: {{ $.Values.service.type }}
   ports:

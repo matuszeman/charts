@@ -40,6 +40,9 @@ deployment:
 #  strategy:
 #    # RollingUpdate / Recreate
 #    type: RollingUpdate
+#    rollingUpdate:
+#      maxUnavailable: "25%"
+#      maxSurge: "25%"
 
 job:
   enabled: false
@@ -106,11 +109,25 @@ service:
   #port: 80
   #targetPort: http
 
+headlessService:
+  enabled: false
+
 prometheus:
-  #  port: prometheus-exporter
-  #  path: /metrics
+  # https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.Endpoint
+#  port: prometheus-exporter
+#  path: /metrics
+#  params:
+#    module: default
+#    target: http://localhost:8060/event/channels-stats
   serviceMonitor:
     enabled: false
+    # MetricRelabelConfigs to apply to samples before ingestion
+    # Example:
+    # metricRelabelings:
+    #   - sourceLabels: [__name__]
+    #     regex: '(container_cpu_usage_seconds_total|container_memory_usage_bytes)'
+    #     action: keep
+    metricRelabelings: []
 
 ingresses: {}
 ingress: {}
