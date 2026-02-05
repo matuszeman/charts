@@ -296,6 +296,39 @@ tests:
             test: me
         template: deployment.yaml
         documentIndex: 0
+  - it: when secret, then generate plan secret with base64 encoded data, defaults to Opaque type
+    set:
+      configs:
+        secret-opaque:
+          secret: {}
+          content:
+            key1: value1
+    asserts:
+      - equal:
+          path: type
+          value: Opaque
+        template: configs.yaml
+        documentIndex: 0
+      - equal:
+          path: data.key1
+          decodeBase64: true
+          value: value1
+        template: configs.yaml
+        documentIndex: 0
+  - it: when secret, then can set type
+    set:
+      configs:
+        secret-opaque:
+          secret:
+            type: kubernetes.io/basic-auth
+          content:
+            key1: value1
+    asserts:
+      - equal:
+          path: type
+          value: kubernetes.io/basic-auth
+        template: configs.yaml
+        documentIndex: 0
   - it: when aws secret with annotations
     set:
       configs:
