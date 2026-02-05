@@ -1,9 +1,0 @@
-dependencies:
-- name: idp-app-config
-  repository: file://../idp-app-config
-  version: 4.0.0
-- name: idp-app
-  repository: file://../idp-app
-  version: 4.0.0
-digest: sha256:07e6aac511e61372d0a8fb1df1b903654a9f3b1a76308d907d8047167406102f
-generated: "2026-02-05T10:00:04.546786+01:00"

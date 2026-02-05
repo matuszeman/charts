@@ -1,0 +1,9 @@
+dependencies:
+- name: idp-app-config
+  repository: file://../../examples/idp-app-config
+  version: 4.0.0
+- name: idp-app
+  repository: file://../../charts/idp-app
+  version: 4.0.0
+digest: sha256:871129415f5449f9429bcd6a4c4397dba3cd16d46e537dbe0ef428ec5abdf799
+generated: "2026-02-05T10:14:46.499995+01:00"
