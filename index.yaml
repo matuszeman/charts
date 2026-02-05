@@ -2,6 +2,15 @@ apiVersion: v1
 entries:
   idp-app:
   - apiVersion: v2
+    created: "2026-02-05T09:10:41.693237081Z"
+    description: Base chart
+    digest: 85b1a8ab77b45951c2cb34f4697d8238c9fd84dfcc973f8ea924a070db52a61d
+    name: idp-app
+    type: application
+    urls:
+    - https://github.com/matuszeman/charts/releases/download/idp-app-4.0.0/idp-app-4.0.0.tgz
+    version: 4.0.0
+  - apiVersion: v2
     created: "2025-08-12T09:45:14.602232081Z"
     description: Base chart
     digest: 8571ddba17db1e755ac65a6ecef75e0e86fc714e61a6ace7623578e107f75ca1
@@ -165,6 +174,15 @@ entries:
     version: 1.0.0
   idp-app-config:
   - apiVersion: v2
+    created: "2026-02-05T09:10:41.957166048Z"
+    description: idp-app config
+    digest: 5e51647a8a462df72dffd6f3d7421c33d3ac07b4695bcf1f8e420268e86e15e5
+    name: idp-app-config
+    type: application
+    urls:
+    - https://github.com/matuszeman/charts/releases/download/idp-app-config-4.0.0/idp-app-config-4.0.0.tgz
+    version: 4.0.0
+  - apiVersion: v2
     created: "2025-08-11T15:17:29.002465863Z"
     description: idp-app config
     digest: f98bde50ac41e077a41dd8a40c7e528c2be6540b5028651cf0f09a672d870b8f
@@ -212,6 +230,26 @@ entries:
     version: 0.1.0
   test:
   - apiVersion: v2
+    created: "2026-02-05T09:10:42.163431804Z"
+    dependencies:
+    - import-values:
+      - child: global
+        parent: global
+      name: idp-app-config
+      repository: file://../idp-app-config
+      version: 4.x.x
+    - alias: app
+      name: idp-app
+      repository: file://../idp-app
+      version: 4.x.x
+    description: Test chart
+    digest: f714f9a2751a95a9fd7d5159f7e155381552d778f99da4126ed8ebea687f381e
+    name: test
+    type: application
+    urls:
+    - https://github.com/matuszeman/charts/releases/download/test-1.0.0/test-1.0.0.tgz
+    version: 1.0.0
+  - apiVersion: v2
     appVersion: 1.16.0
     created: "2023-11-10T20:43:48.198649457Z"
     description: Test chart
@@ -221,4 +259,4 @@ entries:
     urls:
     - https://github.com/matuszeman/charts/releases/download/test-0.1.0/test-0.1.0.tgz
     version: 0.1.0
-generated: "2025-08-12T09:45:14.602369088Z"
+generated: "2026-02-05T09:10:42.163604467Z"
