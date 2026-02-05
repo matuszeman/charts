@@ -430,3 +430,51 @@ tests:
               release: 'RELEASE-NAME'
         template: configs.yaml
         documentIndex: 0
+  - it: when secret and templated is enabled, then parse all config values using tpl
+    set:
+      configs:
+        secret:
+          secret: {}
+          templated: true
+          values:
+            some: value
+          content:
+            str: |-
+              configKey: '{{ .configKey }}'
+              configSpec:
+                values:
+                  some: '{{ .configSpec.values.some }}'
+              contentKey: '{{ .contentKey }}'
+              release: '{{ .Release.Name }}'
+            yaml:
+              configKey: '{{ .configKey }}'
+              configSpec:
+                values:
+                  some: '{{ .configSpec.values.some }}'
+              contentKey: '{{ .contentKey }}'
+              release: '{{ .Release.Name }}'
+    asserts:
+      - equal:
+          path: data.str
+          decodeBase64: true
+          value: |-
+            configKey: 'secret'
+            configSpec:
+              values:
+                some: 'value'
+            contentKey: 'str'
+            release: 'RELEASE-NAME'
+        template: configs.yaml
+        documentIndex: 0
+      - equal:
+          path: data.yaml
+          decodeBase64: true
+          value: |-
+            configKey: 'secret'
+            configSpec:
+              values:
+                some: 'value'
+            contentKey: 'yaml'
+            release: 'RELEASE-NAME'
+        template: configs.yaml
+        documentIndex: 0
