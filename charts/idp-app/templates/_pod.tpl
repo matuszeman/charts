@@ -54,7 +54,7 @@ spec:
     {{- if empty (include "idp-app.isConfigUsedInContainersVolumeMounts" (list $configKey $containers)) }}
     {{- else }}
     - name: config-{{ $configKey }}
-      {{- if or (kindIs "map" .secret) $v.fromSecret $v.awsSecret $v.sealedSecret }}
+      {{- if or (kindIs "map" $v.secret) $v.fromSecret $v.awsSecret $v.sealedSecret }}
       secret:
         secretName: {{ include "idp-app.configName" (list $ $configKey) }}
         {{- with $v.defaultMode }}

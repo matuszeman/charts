@@ -58,9 +58,14 @@ tests:
       containers:
         app:
           configDirs:
+            secret-opaque: /config/secret
             aws-secret: /config/aws-secret
             from-secret: /config/from-secret
           env:
+            secret-opaque-env:
+              config:
+                name: secret-opaque
+                key: key1
             aws-secret-env:
               config:
                 name: aws-secret
@@ -70,6 +75,10 @@ tests:
                 name: from-secret
                 key: key1
       configs:
+        secret-opaque:
+          secret: {}
+          content:
+            key1: value
         aws-secret:
           awsSecret:
             arn: arn:aws:iam::123456789012:role/external-secrets
@@ -80,6 +89,15 @@ tests:
           content:
             key1: value
     asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: secret-opaque-env
+            valueFrom:
+              secretKeyRef:
+                key: key1
+                name: RELEASE-NAME-config-secret-opaque
+        template: deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -97,6 +115,13 @@ tests:
               secretKeyRef:
                 key: key1
                 name: some-secret
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-secret-opaque
+            secret:
+              secretName: RELEASE-NAME-config-secret-opaque
         template: deployment.yaml
       - contains:
           path: spec.template.spec.volumes
