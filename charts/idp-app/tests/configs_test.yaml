@@ -58,9 +58,14 @@ tests:
       containers:
         app:
           configDirs:
+            secret-opaque: /config/secret
             aws-secret: /config/aws-secret
             from-secret: /config/from-secret
           env:
+            secret-opaque-env:
+              config:
+                name: secret-opaque
+                key: key1
             aws-secret-env:
               config:
                 name: aws-secret
@@ -70,6 +75,10 @@ tests:
                 name: from-secret
                 key: key1
       configs:
+        secret-opaque:
+          secret: {}
+          content:
+            key1: value
         aws-secret:
           awsSecret:
             arn: arn:aws:iam::123456789012:role/external-secrets
@@ -80,6 +89,15 @@ tests:
           content:
             key1: value
     asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: secret-opaque-env
+            valueFrom:
+              secretKeyRef:
+                key: key1
+                name: RELEASE-NAME-config-secret-opaque
+        template: deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -97,6 +115,13 @@ tests:
               secretKeyRef:
                 key: key1
                 name: some-secret
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-secret-opaque
+            secret:
+              secretName: RELEASE-NAME-config-secret-opaque
         template: deployment.yaml
       - contains:
           path: spec.template.spec.volumes
@@ -296,6 +321,39 @@ tests:
             test: me
         template: deployment.yaml
         documentIndex: 0
+  - it: when secret, then generate plan secret with base64 encoded data, defaults to Opaque type
+    set:
+      configs:
+        secret-opaque:
+          secret: {}
+          content:
+            key1: value1
+    asserts:
+      - equal:
+          path: type
+          value: Opaque
+        template: configs.yaml
+        documentIndex: 0
+      - equal:
+          path: data.key1
+          decodeBase64: true
+          value: value1
+        template: configs.yaml
+        documentIndex: 0
+  - it: when secret, then can set type
+    set:
+      configs:
+        secret-opaque:
+          secret:
+            type: kubernetes.io/basic-auth
+          content:
+            key1: value1
+    asserts:
+      - equal:
+          path: type
+          value: kubernetes.io/basic-auth
+        template: configs.yaml
+        documentIndex: 0
   - it: when aws secret with annotations
     set:
       configs:
@@ -395,5 +453,53 @@ tests:
                   some: 'value'
               contentKey: 'yaml'
               release: 'RELEASE-NAME'
+        template: configs.yaml
+        documentIndex: 0
+  - it: when secret and templated is enabled, then parse all config values using tpl
+    set:
+      configs:
+        secret:
+          secret: {}
+          templated: true
+          values:
+            some: value
+          content:
+            str: |-
+              configKey: '{{ .configKey }}'
+              configSpec:
+                values:
+                  some: '{{ .configSpec.values.some }}'
+              contentKey: '{{ .contentKey }}'
+              release: '{{ .Release.Name }}'
+            yaml:
+              configKey: '{{ .configKey }}'
+              configSpec:
+                values:
+                  some: '{{ .configSpec.values.some }}'
+              contentKey: '{{ .contentKey }}'
+              release: '{{ .Release.Name }}'
+    asserts:
+      - equal:
+          path: data.str
+          decodeBase64: true
+          value: |-
+            configKey: 'secret'
+            configSpec:
+              values:
+                some: 'value'
+            contentKey: 'str'
+            release: 'RELEASE-NAME'
+        template: configs.yaml
+        documentIndex: 0
+      - equal:
+          path: data.yaml
+          decodeBase64: true
+          value: |-
+            configKey: 'secret'
+            configSpec:
+              values:
+                some: 'value'
+            contentKey: 'yaml'
+            release: 'RELEASE-NAME'
         template: configs.yaml
         documentIndex: 0

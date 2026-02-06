@@ -112,6 +112,10 @@ configs:
       script.sh: |
         #!/bin/sh
         echo Works
+  secret-opaque:
+    secret: {}
+    content:
+      some: secretvalue
   app-secrets:
     defaultMode: 0400
     awsSecret:

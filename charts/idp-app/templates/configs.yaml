@@ -6,6 +6,34 @@
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- if or .fromSecret .fromConfigMap }}
+{{- else if (kindIs "map" .secret) }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "idp-app.configName" (list $ $configKey) }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  {{- $annotations := merge (dict) $defaults.configs.annotations (default $configSpec.annotations dict) }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+type: {{ .secret.type | default "Opaque" }}
+data:
+{{- range $contentKey, $v := $configSpec.content }}
+  {{- $rawValue := $v | required (printf "configs.%s.secret.%s required" $configKey $contentKey ) }}
+  {{- $strValue := "" }}
+  {{- if kindIs "map" $rawValue }}
+    {{- $strValue = $rawValue | toYaml }}
+  {{- else }}
+    {{- $strValue = $rawValue | toString }}
+  {{- end }}
+  {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
+  {{- $val := ($configSpec.templated | default false) | ternary (tpl $strValue $tplCtx) $strValue }}
+  {{ $contentKey }}:
+    {{- toYaml ($val | b64enc ) | nindent 4 }}
+{{- end }}
 {{- else if .sealedSecret }}
 {{- with .sealedSecret }}
 ---

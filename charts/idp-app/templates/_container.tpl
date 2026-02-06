@@ -88,7 +88,7 @@ env:
     {{- else if hasKey $v "config" }}
     {{- with $configRef := $v.config }}
     {{- $config := required (printf "env: %s must be specified in 'configs' values."  $configRef.name) (index $.Values.configs $configRef.name) }}
-    {{- if or $config.fromSecret $config.awsSecret $config.sealedSecret }}
+    {{- if or (kindIs "map" $config.secret) $config.fromSecret $config.awsSecret $config.sealedSecret }}
     secretKeyRef:
       name: {{ include "idp-app.configName" (list $ $configRef.name) }}
       key: {{ $configRef.key }}
