@@ -1,4 +1,5 @@
 global:
+  debug: true
   cluster: test
 
   appVersion: 0.1.0
@@ -13,6 +14,10 @@ global:
         aws_region: eu-central-1
         domains:
           example.com: example.com
+        httpGateways:
+          http-public:
+            name: http-public
+            namespace: dev-gateway
         nodePools:
           test1:
             nodeSelector:
@@ -54,6 +59,12 @@ global:
             port: 80
         accessLog:
           enabled: true
+      httpRoute:
+        enabled: false
+        #path: /
+        pathType: PathPrefix
+        annotations: {}
+        #filters: []
       configs:
         annotations: {}
           # we want argocd to sync configs first, then the rest of deployment
@@ -373,6 +384,16 @@ ingress:
   basicAuth:
     enabled: true
     secretName: test-basic-auth
+
+httpRoutes:
+  public:
+    enabled: true
+    gatewayName: http-public
+    domain: example.com
+    host: test
+    path: /somepath
+    pathType: PathPrefix
+    annotations: {}
 
 serviceAccount:
   awsRoleArn: arn:aws:iam::123456789012:role/test-role

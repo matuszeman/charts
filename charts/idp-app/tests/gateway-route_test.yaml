@@ -1,0 +1,115 @@
+suite: http-route
+templates:
+  - http-route.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should create HTTPRoute when gateway is enabled
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          pathType: PathPrefix
+          annotations: { }
+    asserts:
+      - equal:
+          path: metadata
+          value:
+            name: RELEASE-NAME-public
+            labels:
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/version: 0.1.0
+              app.kubernetes.io/managed-by: Helm
+      - equal:
+          path: spec
+          value:
+            parentRefs:
+              - name: http-public
+                namespace: dev-gateway
+            hostnames:
+              - "test.example.com"
+            rules:
+              - matches:
+                  - path:
+                      type: PathPrefix
+                      value: /
+                backendRefs:
+                  - name: RELEASE-NAME
+                    namespace: NAMESPACE
+                    port: 80
+  - it: multi support
+    values:
+      - values/multi.yaml
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: __DEPLOYMENT_ID__
+          path: /
+    asserts:
+      - equal:
+          path: metadata
+          value:
+            name: RELEASE-NAME-one-public
+            labels:
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/instance: RELEASE-NAME-one
+              app.kubernetes.io/version: 0.1.0
+              app.kubernetes.io/managed-by: Helm
+        documentIndex: 0
+      - equal:
+          path: spec
+          value:
+            parentRefs:
+              - name: http-public
+                namespace: dev-gateway
+            hostnames:
+              - "one.example.com"
+            rules:
+              - matches:
+                  - path:
+                      type: PathPrefix
+                      value: /
+                backendRefs:
+                  - name: RELEASE-NAME-one
+                    namespace: NAMESPACE
+                    port: 80
+        documentIndex: 0
+      - equal:
+          path: metadata
+          value:
+            name: RELEASE-NAME-two-public
+            labels:
+              app.kubernetes.io/name: app-name
+              app.kubernetes.io/instance: RELEASE-NAME-two
+              app.kubernetes.io/version: 0.1.0
+              app.kubernetes.io/managed-by: Helm
+        documentIndex: 1
+      - equal:
+          path: spec
+          value:
+            parentRefs:
+              - name: http-public
+                namespace: dev-gateway
+            hostnames:
+              - "two.example.com"
+            rules:
+              - matches:
+                  - path:
+                      type: PathPrefix
+                      value: /
+                backendRefs:
+                  - name: RELEASE-NAME-two
+                    namespace: NAMESPACE
+                    port: 80
+        documentIndex: 1

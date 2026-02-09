@@ -8,6 +8,10 @@ app:
   appName: test
   appVersion: 1.0.0
 
+  containers:
+    app:
+      image: test
+
   configs:
     app:
       content:

@@ -1,0 +1,7 @@
+httpRoutes:
+  public:
+    enabled: true
+    gatewayName: http-public
+    domain: example.com
+    host: test
+    path: /
