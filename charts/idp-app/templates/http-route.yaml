@@ -1,0 +1,58 @@
+{{- if not $.Values.debug -}}
+{{- range $routeKey, $routeSpec := $.Values.httpRoutes }}
+{{- if $routeSpec.enabled }}
+{{- $route := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.httpRoute) (deepCopy $routeSpec) }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+{{- $backendRef := dict }}
+{{- if and $.Values.service.enabled $route.service }}
+{{- fail "gateway-route: both service.enabled and gateway.service is set" }}
+{{- else if $.Values.service.enabled }}
+{{- $backendRef = dict "name" $deploymentName "port" (default "app" $.Values.service.port) }}
+{{- else if $route.service }}
+{{- $backendRef = deepCopy $route.service }}
+{{- else }}
+{{- fail "gateway-route: service must be enabled" }}
+{{- end }}
+{{- $routeName := join "-" (compact (list $deploymentName $routeKey)) }}
+{{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
+{{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
+{{- $gateway := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $route.gatewayName)) }}
+{{- $host := (printf "%s.%s" $route.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- $gatewayParentName := required "gateway.gatewayName required" $gateway.name }}
+{{- $gatewayParentNamespace := default $.Release.Namespace $gateway.namespace }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $routeName }}
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+  {{- if $route.annotations }}
+  annotations:
+    {{- toYaml $route.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    - name: {{ $gatewayParentName }}
+      namespace: {{ $gatewayParentNamespace }}
+  hostnames:
+    - {{ $host | quote }}
+  rules:
+    - matches:
+        - path:
+            type: {{ $route.pathType | default "PathPrefix" }}
+            value: {{ $route.path | required "gateway-route: path required" }}
+      {{- if $route.filters }}
+      filters:
+        {{- toYaml $route.filters | nindent 8 }}
+      {{- end }}
+      backendRefs:
+        - name: {{ tpl ($backendRef.name | required "gateway-route: service.name required") $ | quote }}
+          namespace: {{ $.Release.Namespace }}
+          port: {{ $backendRef.port | required "gateway-route: service.port required" }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

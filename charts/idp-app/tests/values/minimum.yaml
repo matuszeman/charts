@@ -11,6 +11,10 @@ global:
         aws_region: eu-central-1
         domains:
           example.com: example.com
+        httpGateways:
+          http-public:
+            name: http-public
+            namespace: dev-gateway
         apps:
           oauth2proxy:
             authUrl: http://oauth2proxy.auth.svc.cluster.local
@@ -40,6 +44,12 @@ global:
     defaults:
       imageRepository: private
       imagePullPolicy: IfNotPresent
+      httpRoute:
+        enabled: false
+        #path: /
+        pathType: PathPrefix
+        annotations: { }
+        #filters: [ ]
       ingress:
         enabled: false
         className: nginx-internal
