@@ -31,7 +31,9 @@ tests:
           path: spec
           value:
             parentRefs:
-              - name: http-public
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: http-public
                 namespace: dev-gateway
             hostnames:
               - "test.example.com"
@@ -41,7 +43,10 @@ tests:
                       type: PathPrefix
                       value: /
                 backendRefs:
-                  - name: RELEASE-NAME
+                  - group: ""
+                    kind: Service
+                    weight: 1
+                    name: RELEASE-NAME
                     namespace: NAMESPACE
                     port: 80
   - it: multi support
@@ -71,7 +76,9 @@ tests:
           path: spec
           value:
             parentRefs:
-              - name: http-public
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: http-public
                 namespace: dev-gateway
             hostnames:
               - "one.example.com"
@@ -81,7 +88,10 @@ tests:
                       type: PathPrefix
                       value: /
                 backendRefs:
-                  - name: RELEASE-NAME-one
+                  - group: ""
+                    kind: Service
+                    weight: 1
+                    name: RELEASE-NAME-one
                     namespace: NAMESPACE
                     port: 80
         documentIndex: 0
@@ -99,7 +109,9 @@ tests:
           path: spec
           value:
             parentRefs:
-              - name: http-public
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: http-public
                 namespace: dev-gateway
             hostnames:
               - "two.example.com"
@@ -109,7 +121,10 @@ tests:
                       type: PathPrefix
                       value: /
                 backendRefs:
-                  - name: RELEASE-NAME-two
+                  - group: ""
+                    kind: Service
+                    weight: 1
+                    name: RELEASE-NAME-two
                     namespace: NAMESPACE
                     port: 80
         documentIndex: 1
