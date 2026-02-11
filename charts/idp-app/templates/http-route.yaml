@@ -34,7 +34,9 @@ metadata:
   {{- end }}
 spec:
   parentRefs:
-    - name: {{ $gatewayParentName }}
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ $gatewayParentName }}
       namespace: {{ $gatewayParentNamespace }}
   hostnames:
     - {{ $host | quote }}
@@ -48,9 +50,12 @@ spec:
         {{- toYaml $route.filters | nindent 8 }}
       {{- end }}
       backendRefs:
-        - name: {{ tpl ($backendRef.name | required "gateway-route: service.name required") $ | quote }}
+        - group: ""
+          kind: Service
+          name: {{ tpl ($backendRef.name | required "gateway-route: service.name required") $ | quote }}
           namespace: {{ $.Release.Namespace }}
           port: {{ $backendRef.port | required "gateway-route: service.port required" }}
+          weight: 1
 ---
 {{- end }}
 {{- end }}
