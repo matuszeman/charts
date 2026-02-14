@@ -354,6 +354,32 @@ tests:
           value: kubernetes.io/basic-auth
         template: configs.yaml
         documentIndex: 0
+  - it: when not templated cm, should not call tpl function
+    set:
+      configs:
+        app:
+          content:
+            key: '{{ secret "/config/secrets/storage-enryption-key" }}'
+    asserts:
+      - equal:
+          path: data.key
+          value: '{{ secret "/config/secrets/storage-enryption-key" }}'
+        template: configs.yaml
+        documentIndex: 0
+  - it: when not templated secret, should not call tpl function
+    set:
+      configs:
+        app:
+          secret: {}
+          content:
+            key: '{{ secret "/config/secrets/storage-enryption-key" }}'
+    asserts:
+      - equal:
+          path: data.key
+          decodeBase64: true
+          value: '{{ secret "/config/secrets/storage-enryption-key" }}'
+        template: configs.yaml
+        documentIndex: 0
   - it: when aws secret with annotations
     set:
       configs:
