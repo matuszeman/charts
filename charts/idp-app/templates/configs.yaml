@@ -29,8 +29,13 @@ data:
   {{- else }}
     {{- $strValue = $rawValue | toString }}
   {{- end }}
+  {{- $val := "" }}
+  {{- if $configSpec.templated }}
   {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
-  {{- $val := ($configSpec.templated | default false) | ternary (tpl $strValue $tplCtx) $strValue }}
+  {{- $val = tpl $strValue $tplCtx }}
+  {{- else }}
+  {{- $val = $strValue }}
+  {{- end }}
   {{ $contentKey }}:
     {{- toYaml ($val | b64enc ) | nindent 4 }}
 {{- end }}
@@ -125,8 +130,13 @@ data:
   {{- else }}
     {{- $strValue = $rawValue | toString }}
   {{- end }}
+  {{- $val := "" }}
+  {{- if $configSpec.templated }}
   {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
-  {{- $val := ($configSpec.templated | default false) | ternary (tpl $strValue $tplCtx) $strValue }}
+  {{- $val = tpl $strValue $tplCtx }}
+  {{- else }}
+  {{- $val = $strValue }}
+  {{- end }}
   {{ $contentKey }}:
     {{- toYaml $val | nindent 4 }}
 {{- end }}
