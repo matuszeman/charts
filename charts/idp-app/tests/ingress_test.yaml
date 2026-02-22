@@ -151,3 +151,19 @@ tests:
             name: RELEASE-NAME-existing-service
             port:
               number: 80
+  - it: when host is not defined, should use domain only
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: example.com
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: example.com
