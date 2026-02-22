@@ -16,8 +16,20 @@ global:
           example.com: example.com
         httpGateways:
           http-public:
+            controller: traefik
             name: http-public
             namespace: dev-gateway
+        apps:
+          authelia:
+            traefik:
+              forwardAuthMiddleware:
+                address: 'http://authelia.auth.svc.cluster.local/api/authz/forward-auth'
+                trustForwardHeader: true
+                authResponseHeaders:
+                  - 'Remote-User'
+                  - 'Remote-Groups'
+                  - 'Remote-Email'
+                  - 'Remote-Name'
         nodePools:
           test1:
             nodeSelector:
@@ -65,6 +77,9 @@ global:
         pathType: PathPrefix
         annotations: {}
         #filters: []
+        forwardAuth:
+          enabled: false
+          #appName: authelia
       configs:
         annotations: {}
           # we want argocd to sync configs first, then the rest of deployment
