@@ -19,7 +19,12 @@
 {{- $ingressName := join "-" (compact (list $deploymentName $ingressKey)) }}
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 {{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $ingress.domain) }}
-{{- $host := (printf "%s.%s" $ingress.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- $host := "" }}
+{{- if $ingress.host }}
+{{- $host = (printf "%s.%s" $ingress.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- else }}
+{{- $host = $domain }}
+{{- end }}
 {{- $ingressClassName := required "ingress.className required" $ingress.className }}
 {{- $svcPort := hasKey $ingress "fcgi" | ternary "fcgi" "http" }}
 {{- $fcgiConfigMapName := printf "%s-ingress-fcgi" $ingressName }}
