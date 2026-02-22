@@ -13,6 +13,7 @@ global:
           example.com: example.com
         httpGateways:
           http-public:
+            controller: traefik
             name: http-public
             namespace: dev-gateway
         apps:
@@ -32,6 +33,12 @@ global:
               - Auth-Proxy-Email
               - Auth-Proxy-Groups
             path: /oauth2
+          authelia:
+            authUrl: http://authelia.auth.svc.cluster.local
+            signinUrl: https://authelia.auth.example.com
+            responseHeaders:
+              - Remote-User
+              - Remote-Groups
         nodePools:
           test1:
             nodeSelector:

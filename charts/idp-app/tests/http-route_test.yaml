@@ -49,6 +49,24 @@ tests:
                     name: RELEASE-NAME
                     namespace: NAMESPACE
                     port: 80
+  - it: when forwardAuth enabled, should add filter to httproute and generate traefik middleware
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          # https://www.authelia.com/reference/guides/proxy-authorization/#implementations
+          forwardAuth:
+            enabled: true
+            appName: authelia
+    asserts:
+      - matchSnapshot: { }
+
   - it: multi support
     values:
       - values/multi.yaml

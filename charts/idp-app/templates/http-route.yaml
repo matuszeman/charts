@@ -7,21 +7,22 @@
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 {{- $backendRef := dict }}
 {{- if and $.Values.service.enabled $route.service }}
-{{- fail "gateway-route: both service.enabled and gateway.service is set" }}
+{{- fail "httpRoute: both service.enabled and httpRoute.service is set" }}
 {{- else if $.Values.service.enabled }}
 {{- $backendRef = dict "name" $deploymentName "port" (default "app" $.Values.service.port) }}
 {{- else if $route.service }}
 {{- $backendRef = deepCopy $route.service }}
 {{- else }}
-{{- fail "gateway-route: service must be enabled" }}
+{{- fail "httpRoute: service must be enabled" }}
 {{- end }}
 {{- $routeName := join "-" (compact (list $deploymentName $routeKey)) }}
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 {{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
 {{- $gateway := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $route.gatewayName)) }}
 {{- $host := (printf "%s.%s" $route.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
-{{- $gatewayParentName := required "gateway.gatewayName required" $gateway.name }}
-{{- $gatewayParentNamespace := default $.Release.Namespace $gateway.namespace }}
+{{- $gatewayParentName := $gateway.name | required "global.idpAppConfig.httpGateways.NAME.name required" }}
+{{- $gatewayParentNamespace := $gateway.namespace | default $.Release.Namespace }}
+{{- $gatewayController := $gateway.controller | required "global.idpAppConfig.httpGateways.NAME.controller required"  }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -44,18 +45,47 @@ spec:
     - matches:
         - path:
             type: {{ $route.pathType | default "PathPrefix" }}
-            value: {{ $route.path | required "gateway-route: path required" }}
-      {{- if $route.filters }}
+            value: {{ $route.path | required "httpRoute: path required" }}
+      {{- if or $route.filters (and $route.forwardAuth $route.forwardAuth.enabled) }}
       filters:
-        {{- toYaml $route.filters | nindent 8 }}
+        {{- if and $route.forwardAuth $route.forwardAuth.enabled }}
+        {{- if eq $gatewayController "traefik" }}
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: add-prefix
+        {{- else }}
+        {{- fail "forwardAuth filter is only supported with traefik gateway controller" }}
+        {{- end }}
+        {{- end }}
+        {{- with $route.filters }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- end }}
       backendRefs:
         - group: ""
           kind: Service
-          name: {{ tpl ($backendRef.name | required "gateway-route: service.name required") $ | quote }}
+          name: {{ tpl ($backendRef.name | required "httpRoute: service.name required") $ | quote }}
           namespace: {{ $.Release.Namespace }}
-          port: {{ $backendRef.port | required "gateway-route: service.port required" }}
+          port: {{ $backendRef.port | required "httpRoute: service.port required" }}
           weight: 1
+---
+{{- end }}
+{{- if $route.forwardAuth $route.forwardAuth.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-forwardauth
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+  {{- if $route.annotations }}
+  annotations:
+    {{- toYaml $route.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  addPrefix:
+    prefix: /prefix
 ---
 {{- end }}
 {{- end }}
