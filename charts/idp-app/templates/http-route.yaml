@@ -54,7 +54,7 @@ spec:
           extensionRef:
             group: traefik.io
             kind: Middleware
-            name: add-prefix
+            name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-forwardauth
         {{- else }}
         {{- fail "forwardAuth filter is only supported with traefik gateway controller" }}
         {{- end }}
@@ -72,7 +72,9 @@ spec:
           weight: 1
 ---
 {{- end }}
-{{- if $route.forwardAuth $route.forwardAuth.enabled }}
+{{- if and $route.forwardAuth $route.forwardAuth.enabled }}
+{{- $forwardAuthApp := include "idp-app.clusterConfigMapValue" (list $ "apps" $route.forwardAuth.appName) | fromYaml }}
+{{- $traefikConfig := $forwardAuthApp.traefik.forwardAuthMiddleware | required "forwardAuth: app.traefik.forwardAuthMiddleware required" }}
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -84,8 +86,19 @@ metadata:
     {{- toYaml $route.annotations | nindent 4 }}
   {{- end }}
 spec:
-  addPrefix:
-    prefix: /prefix
+  forwardAuth:
+    address: "{{ $traefikConfig.address }}{{ if $route.forwardAuth.allowedGroups }}?allowed_groups={{ join "," $route.forwardAuth.allowedGroups }}{{ end }}"
+    {{- if $traefikConfig.trustForwardHeader }}
+    trustForwardHeader: {{ $traefikConfig.trustForwardHeader }}
+    {{- end }}
+    {{- if $traefikConfig.authResponseHeaders }}
+    authResponseHeaders:
+      {{- toYaml $traefikConfig.authResponseHeaders | nindent 6 }}
+    {{- end }}
+    {{- if $traefikConfig.authRequestHeaders }}
+    authRequestHeaders:
+      {{- toYaml $traefikConfig.authRequestHeaders | nindent 6 }}
+    {{- end }}
 ---
 {{- end }}
 {{- end }}

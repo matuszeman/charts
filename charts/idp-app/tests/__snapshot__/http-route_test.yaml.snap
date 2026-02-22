@@ -1,0 +1,56 @@
+when forwardAuth enabled, should add filter to httproute and generate traefik middleware:
+  1: |
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-public
+    spec:
+      hostnames:
+        - test.example.com
+      parentRefs:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: http-public
+          namespace: dev-gateway
+      rules:
+        - backendRefs:
+            - group: ""
+              kind: Service
+              name: RELEASE-NAME
+              namespace: NAMESPACE
+              port: 80
+              weight: 1
+          filters:
+            - extensionRef:
+                group: traefik.io
+                kind: Middleware
+                name: RELEASE-NAME-public-forwardauth
+              type: ExtensionRef
+          matches:
+            - path:
+                type: PathPrefix
+                value: /
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-public-forwardauth
+    spec:
+      forwardAuth:
+        address: http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+        authResponseHeaders:
+          - Remote-User
+          - Remote-Groups
+          - Remote-Email
+          - Remote-Name
+        trustForwardHeader: true

@@ -34,11 +34,15 @@ global:
               - Auth-Proxy-Groups
             path: /oauth2
           authelia:
-            authUrl: http://authelia.auth.svc.cluster.local
-            signinUrl: https://authelia.auth.example.com
-            responseHeaders:
-              - Remote-User
-              - Remote-Groups
+            traefik:
+              forwardAuthMiddleware:
+                address: 'http://authelia.auth.svc.cluster.local/api/authz/forward-auth'
+                trustForwardHeader: true
+                authResponseHeaders:
+                  - 'Remote-User'
+                  - 'Remote-Groups'
+                  - 'Remote-Email'
+                  - 'Remote-Name'
         nodePools:
           test1:
             nodeSelector:
@@ -57,6 +61,8 @@ global:
         pathType: PathPrefix
         annotations: { }
         #filters: [ ]
+        forwardAuth:
+          enabled: false
       ingress:
         enabled: false
         className: nginx-internal

@@ -67,6 +67,33 @@ tests:
     asserts:
       - matchSnapshot: { }
 
+  - it: when forwardAuth enabled with unsupported gateway controller, should fail
+    values:
+      - values/service.yaml
+    set:
+      global:
+        idpAppConfig:
+          clusters:
+            test:
+              httpGateways:
+                http-public:
+                  controller: istio
+                  name: http-public
+                  namespace: dev-gateway
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            appName: authelia
+    asserts:
+      - failedTemplate:
+          errorMessage: "forwardAuth filter is only supported with traefik gateway controller"
+
   - it: multi support
     values:
       - values/multi.yaml
