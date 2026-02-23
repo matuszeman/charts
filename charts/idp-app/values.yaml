@@ -26,6 +26,28 @@ podDisruptionBudget:
 enableServiceLinks: false
 
 volumes: {}
+# Example volume configurations:
+# volumes:
+#   # Using existing PVC
+#   data:
+#     persistentVolumeClaim:
+#       claimName: my-existing-pvc
+#   # Auto-create PVC (claimName not specified)
+#   app-data:
+#     persistentVolumeClaim:
+#       accessMode: ReadWriteOnce  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany
+#       size: 10Gi
+#       storageClassName: ""  # Empty string for default storage class
+#       annotations: {}
+#       selector: {}  # Optional label selector for PV binding
+#       volumeName: ""  # Optional specific PV name to bind to
+#   # Other volume types
+#   config:
+#     configMap:
+#       name: my-config
+#   temp:
+#     emptyDir:
+#       sizeLimit: 1Gi
 
 deployment:
   enabled: false

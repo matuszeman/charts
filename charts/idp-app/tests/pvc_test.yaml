@@ -1,0 +1,153 @@
+suite: pvc
+templates:
+  - pvc.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should create PVC when persistentVolumeClaim spec is defined without claimName
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+            size: 10Gi
+            storageClassName: "fast-ssd"
+            annotations:
+              example.com/pvc-type: "data"
+        shared:
+          persistentVolumeClaim:
+            accessMode: ReadWriteMany
+            size: 5Gi
+            storageClass: "nfs"
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-data
+        documentIndex: 0
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteOnce
+        documentIndex: 0
+      - equal:
+          path: spec.resources.requests.storage
+          value: 10Gi
+        documentIndex: 0
+      - equal:
+          path: spec.storageClassName
+          value: "fast-ssd"
+        documentIndex: 0
+      - equal:
+          path: metadata.annotations
+          value:
+            example.com/pvc-type: "data"
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-shared
+        documentIndex: 1
+      - equal:
+          path: spec.accessModes[0]
+          value: ReadWriteMany
+        documentIndex: 1
+
+  - it: should not create PVC when claimName is specified
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            claimName: existing-pvc
+            accessMode: ReadWriteOnce
+            size: 10Gi
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create PVC with multi deployment
+    values:
+      - values/deployment.yaml
+      - values/multi.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+            size: 10Gi
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-one-data
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-two-data
+        documentIndex: 1
+
+  - it: should require accessMode
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            size: 10Gi
+    asserts:
+      - failedTemplate:
+          errorMessage: "volumes.data.persistentVolumeClaim.accessMode required"
+
+  - it: should require size
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+    asserts:
+      - failedTemplate:
+          errorMessage: "volumes.data.persistentVolumeClaim.size required"
+
+  - it: should work without storageClassName
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+            size: 10Gi
+    asserts:
+      - hasDocuments:
+          count: 1
+      - notExists:
+          path: spec.storageClassName
+
+  - it: should support selector and volumeName
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+            size: 10Gi
+            selector:
+              matchLabels:
+                type: ssd
+            volumeName: "my-specific-pv"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.selector.matchLabels.type
+          value: "ssd"
+      - equal:
+          path: spec.volumeName
+          value: "my-specific-pv"

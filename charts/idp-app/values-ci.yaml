@@ -191,6 +191,14 @@ volumes:
   some-files:
     persistentVolumeClaim:
       claimName: pvc-files
+  pvc-data:
+    persistentVolumeClaim:
+      accessMode: ReadWriteOnce  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany
+      size: 10Gi
+      storageClass: ""  # Empty string for default storage class, or specify class name
+      annotations: { }
+      selector: { }  # Optional label selector for PV binding
+      volumeName: ""  # Optional specific PV name to bind to
 
 #nodeCapacity:
 #  type: OnDemand

@@ -2,6 +2,7 @@
 {{- $ := index . 0 }}
 {{- $deploymentKey := index . 1 }}
 {{- $deployment := index . 2 }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 {{- $nodePool := dict "nodeSelector" dict "tolerations" list }}
 {{- if $.Values.nodePool }}
 {{- $clusterNodePool := include "idp-app.clusterConfigMapValue" (list $ "nodePools" $.Values.nodePool) | fromYaml }}
@@ -75,7 +76,13 @@ spec:
     {{- with $.Values.volumes }}
     {{- range $name, $spec := . }}
     - name: {{ $name }}
+      {{- if and $spec.persistentVolumeClaim (not $spec.persistentVolumeClaim.claimName) }}
+      {{- $pvcName := join "-" (compact (list $deploymentName $name)) }}
+      persistentVolumeClaim:
+        claimName: {{ $pvcName }}
+      {{- else }}
       {{- toYaml $spec | nindent 6 }}
+      {{- end }}
     {{- end }}
     {{- end }}
   nodeSelector:
