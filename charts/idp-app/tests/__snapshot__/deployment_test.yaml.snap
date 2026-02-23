@@ -277,6 +277,9 @@ should match snapshot with values-ci.yaml:
             - emptyDir:
                 sizeLimit: 10Mi
               name: ephemeral-app-cache
+            - name: pvc-data
+              persistentVolumeClaim:
+                claimName: RELEASE-NAME-resource-suffix-pvc-data
             - name: some-files
               persistentVolumeClaim:
                 claimName: pvc-files

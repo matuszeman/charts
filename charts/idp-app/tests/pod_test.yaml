@@ -27,3 +27,98 @@ tests:
             name: pvcvol
             readOnly: true
             subPath: file.yaml
+
+  - it: should use existing PVC when claimName is specified
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            claimName: existing-pvc
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: existing-pvc
+
+  - it: should reference auto-created PVC when claimName is not specified
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+            size: 10Gi
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: RELEASE-NAME-data
+
+  - it: should reference auto-created PVC with multi deployment
+    values:
+      - values/deployment.yaml
+      - values/multi.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+            size: 10Gi
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: RELEASE-NAME-one-data
+        documentIndex: 0
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: RELEASE-NAME-two-data
+        documentIndex: 1
+
+  - it: should handle mixed volume types correctly
+    values:
+      - values/deployment.yaml
+    set:
+      volumes:
+        data:
+          persistentVolumeClaim:
+            accessMode: ReadWriteOnce
+            size: 10Gi
+        existing-pvc:
+          persistentVolumeClaim:
+            claimName: my-existing-pvc
+        config:
+          configMap:
+            name: app-config
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: RELEASE-NAME-data
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: existing-pvc
+            persistentVolumeClaim:
+              claimName: my-existing-pvc
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config
+            configMap:
+              name: app-config
+

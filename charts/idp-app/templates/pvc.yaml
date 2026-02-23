@@ -1,0 +1,41 @@
+{{- if not $.Values.debug }}
+{{- with $.Values.volumes }}
+{{- range $volumeName, $volumeSpec := . }}
+{{- if and $volumeSpec.persistentVolumeClaim (not $volumeSpec.persistentVolumeClaim.claimName) }}
+{{- $pvcSpec := $volumeSpec.persistentVolumeClaim }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+{{- $pvcName := join "-" (compact (list $deploymentName $volumeName)) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $pvcName }}
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+  {{- with $pvcSpec.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    - {{ required (printf "volumes.%s.persistentVolumeClaim.accessMode required" $volumeName) $pvcSpec.accessMode }}
+  {{- with $pvcSpec.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ required (printf "volumes.%s.persistentVolumeClaim.size required" $volumeName) $pvcSpec.size }}
+  {{- with $pvcSpec.selector }}
+  selector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $pvcSpec.volumeName }}
+  volumeName: {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
