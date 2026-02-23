@@ -8,6 +8,7 @@ when forwardAuth enabled, should add filter to httproute and generate traefik mi
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
       name: RELEASE-NAME-public
     spec:
       hostnames:
@@ -44,6 +45,7 @@ when forwardAuth enabled, should add filter to httproute and generate traefik mi
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
       name: RELEASE-NAME-public-forwardauth
     spec:
       forwardAuth:

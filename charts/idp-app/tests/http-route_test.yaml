@@ -27,6 +27,7 @@ tests:
               app.kubernetes.io/instance: RELEASE-NAME
               app.kubernetes.io/version: 0.1.0
               app.kubernetes.io/managed-by: Helm
+              traefik.io/controller: traefik-private
       - equal:
           path: spec
           value:
@@ -116,6 +117,7 @@ tests:
               app.kubernetes.io/instance: RELEASE-NAME-one
               app.kubernetes.io/version: 0.1.0
               app.kubernetes.io/managed-by: Helm
+              traefik.io/controller: traefik-private
         documentIndex: 0
       - equal:
           path: spec
@@ -149,6 +151,7 @@ tests:
               app.kubernetes.io/instance: RELEASE-NAME-two
               app.kubernetes.io/version: 0.1.0
               app.kubernetes.io/managed-by: Helm
+              traefik.io/controller: traefik-private
         documentIndex: 1
       - equal:
           path: spec
