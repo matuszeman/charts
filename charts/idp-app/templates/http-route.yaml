@@ -2,6 +2,7 @@
 {{- range $routeKey, $routeSpec := $.Values.httpRoutes }}
 {{- if $routeSpec.enabled }}
 {{- $route := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.httpRoute) (deepCopy $routeSpec) }}
+{{- $gateway := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $route.gatewayName)) }}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
@@ -18,7 +19,6 @@
 {{- $routeName := join "-" (compact (list $deploymentName $routeKey)) }}
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 {{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
-{{- $gateway := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $route.gatewayName)) }}
 {{- $host := "" }}
 {{- if $route.host }}
 {{- $host = (printf "%s.%s" $route.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
@@ -34,6 +34,9 @@ metadata:
   name: {{ $routeName }}
   labels:
     {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- if $route.annotations }}
   annotations:
     {{- toYaml $route.annotations | nindent 4 }}
@@ -86,6 +89,9 @@ metadata:
   name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-forwardauth
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- if $route.annotations }}
   annotations:
     {{- toYaml $route.annotations | nindent 4 }}
