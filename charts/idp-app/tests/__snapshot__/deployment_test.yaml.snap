@@ -223,10 +223,6 @@ should match snapshot with values-ci.yaml:
                   memory: 128Mi
           enableServiceLinks: false
           nodeSelector: null
-          securityContext:
-            sysctls:
-              - name: net.ipv4.ip_unprivileged_port_start
-                value: "0"
           serviceAccountName: RELEASE-NAME-resource-suffix
           tolerations: null
           topologySpreadConstraints:
@@ -329,10 +325,6 @@ when multi deployment:
                   memory: 128Mi
           enableServiceLinks: false
           nodeSelector: null
-          securityContext:
-            sysctls:
-              - name: net.ipv4.ip_unprivileged_port_start
-                value: "0"
           serviceAccountName: RELEASE-NAME
           tolerations: null
           topologySpreadConstraints:
@@ -396,10 +388,6 @@ when multi deployment:
                   memory: 128Mi
           enableServiceLinks: false
           nodeSelector: null
-          securityContext:
-            sysctls:
-              - name: net.ipv4.ip_unprivileged_port_start
-                value: "0"
           serviceAccountName: RELEASE-NAME
           tolerations: null
           topologySpreadConstraints:

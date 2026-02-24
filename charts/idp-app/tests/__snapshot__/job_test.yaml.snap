@@ -64,10 +64,6 @@ given full supported spec values:
           enableServiceLinks: false
           nodeSelector: null
           restartPolicy: OnFailure
-          securityContext:
-            sysctls:
-              - name: net.ipv4.ip_unprivileged_port_start
-                value: "0"
           serviceAccountName: RELEASE-NAME
           tolerations: null
           topologySpreadConstraints:
@@ -130,10 +126,6 @@ when job enabled:
           enableServiceLinks: false
           nodeSelector: null
           restartPolicy: OnFailure
-          securityContext:
-            sysctls:
-              - name: net.ipv4.ip_unprivileged_port_start
-                value: "0"
           serviceAccountName: RELEASE-NAME
           tolerations: null
           topologySpreadConstraints:

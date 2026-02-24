@@ -122,3 +122,21 @@ tests:
             configMap:
               name: app-config
 
+  - it: when .securityContext is set, then generate pod security context
+    values:
+      - values/deployment.yaml
+    set:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 3000
+        fsGroup: 2000
+        supplementalGroups: [ 4000 ]
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsUser: 1000
+            runAsGroup: 3000
+            fsGroup: 2000
+            supplementalGroups: [ 4000 ]
+
