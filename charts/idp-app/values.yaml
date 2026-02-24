@@ -9,6 +9,7 @@ podAnnotations: {}
 affinity: {}
 #terminationGracePeriodSeconds: 30
 restartPolicy: null
+securityContext: null
 
 nodePool: null
 nodeSelector: {}

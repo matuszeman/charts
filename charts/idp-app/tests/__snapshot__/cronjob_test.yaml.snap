@@ -51,10 +51,6 @@ when cronjob enabled:
               enableServiceLinks: false
               nodeSelector: null
               restartPolicy: OnFailure
-              securityContext:
-                sysctls:
-                  - name: net.ipv4.ip_unprivileged_port_start
-                    value: "0"
               serviceAccountName: RELEASE-NAME
               tolerations: null
               topologySpreadConstraints:

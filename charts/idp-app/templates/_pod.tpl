@@ -31,11 +31,10 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   serviceAccountName: {{ include "idp-app.serviceAccountName" $ }}
+  {{- with $.Values.securityContext }}
   securityContext:
-    # This is needed for containerd runtime, docker previously allowed binding to 80 port
-    sysctls:
-      - name: net.ipv4.ip_unprivileged_port_start
-        value: "0"
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- with $.Values.terminationGracePeriodSeconds }}
   terminationGracePeriodSeconds: {{ . }}
   {{- end }}
