@@ -127,10 +127,14 @@ cronjob:
 
 configs:
   app:
+    labels:
+      custom: label
     content:
       file1: file1 content
       plaintextkey: sometext
   scripts:
+    labels:
+      custom: label
     # Octal are translated to decimal
     # https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/#set-posix-permissions-for-secret-keys
     defaultMode: 0777
@@ -139,37 +143,46 @@ configs:
         #!/bin/sh
         echo Works
   secret-opaque:
+    labels:
+      custom: label
     secret: {}
     content:
       some: secretvalue
   app-secrets:
+    labels:
+      custom: label
     defaultMode: 0400
     awsSecret:
       arn: arn:aws:iam::123456789012:role/external-secrets
       versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222
   app-secrets-manual:
+    labels:
+      custom: label
     valuesHash: 1234fdfdf
     awsSecret:
       arn: arn:aws:iam::123456789012:role/external-secrets-manual
-  php:
-    content:
-      php.ini: |
-        memory_limit = 256M
-        max_execution_time = 180
   not-mounted-as-volume-in-pod:
+    labels:
+      custom: label
     content:
       nothing: none
   hashed-cm:
+    labels:
+      custom: label
     restartPodOnUpdate: "NameSuffix"
     content:
       some: value
   hashed-aws-secret:
+    labels:
+      custom: label
     restartPodOnUpdate: "NameSuffix"
     awsSecret:
       arn: arn:aws:iam::123456789012:role/external-secrets
   not-managed-cm:
     fromConfigMap: "{{ .Release.Name }}-not-managed-cm"
   not-managed-cm-hashed:
+    labels:
+      custom: label
     fromConfigMap: "{{ .Release.Name }}-not-managed-cm-hashed"
     valuesHash: "abcd1111"
     restartPodOnUpdate: "NameSuffix"
@@ -234,8 +247,6 @@ containers:
     #      sealed-secret: /sealed-secrets
 
     configFiles:
-      php:
-        php.ini: /etc/php.ini
       not-managed-cm:
         example.txt: /tmp/example.txt
     #      sealed-secret:
