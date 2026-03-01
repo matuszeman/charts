@@ -192,10 +192,6 @@ should match snapshot with values-ci.yaml:
                   name: config-not-managed-cm
                   readOnly: true
                   subPath: example.txt
-                - mountPath: /etc/php.ini
-                  name: config-php
-                  readOnly: true
-                  subPath: php.ini
                 - mountPath: /app/public/var
                   name: ephemeral-app-cache
                   readOnly: false
@@ -263,9 +259,6 @@ should match snapshot with values-ci.yaml:
             - name: config-not-managed-secret
               secret:
                 secretName: RELEASE-NAME-not-managed-secret
-            - configMap:
-                name: RELEASE-NAME-resource-suffix-config-php
-              name: config-php
             - configMap:
                 defaultMode: 511
                 name: RELEASE-NAME-resource-suffix-config-scripts
