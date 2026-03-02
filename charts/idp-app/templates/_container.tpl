@@ -4,15 +4,19 @@ Container manifest
 {{- define "idp-app.container" -}}
 {{- $ := index . 1 -}}
 {{- with index . 0 -}}
-{{- $containerName := required (cat .name "container: name required") .name -}}
-{{- $imageRepoKey := default $.Values.global.idpAppConfig.defaults.imageRepository .imageRepository -}}
+{{- $containerName := required (cat .name "container: name required") .name }}
+{{- $defaultImageRepo := ((($.Values.global).idpAppConfig).defaults).imageRepository | default "" }}
+{{- $imageRepoKey := default $defaultImageRepo .imageRepository }}
+{{- $imageRepositories := ((($.Values.global).idpAppConfig).imageRepositories) | default (dict) }}
+{{- $imageRepo := default $imageRepoKey (index $imageRepositories $imageRepoKey) }}
 name: {{ $containerName }}
 {{- if .securityContext }}
 securityContext:
 {{- toYaml .securityContext | nindent 2 }}
 {{- end }}
-image: "{{ required (printf "imageRepository %s not specified in global.idpAppConfig.imageRepositories" $imageRepoKey ) (index $.Values.global.idpAppConfig.imageRepositories $imageRepoKey) }}/{{ required "image required" .image }}:{{ tpl (required "imageTag required" .imageTag) $ }}"
-imagePullPolicy: {{ default .imagePullPolicy $.Values.global.idpAppConfig.defaults.imagePullPolicy }}
+image: "{{ required "imageRepository required" $imageRepo }}/{{ required "image required" .image }}:{{ tpl (required "imageTag required" .imageTag) $ }}"
+{{- $defaultImagePullPolicy := ((($.Values.global).idpAppConfig).defaults).imagePullPolicy | default "IfNotPresent" }}
+imagePullPolicy: {{ default .imagePullPolicy $defaultImagePullPolicy }}
 {{- with .command }}
 command:
 {{- range . }}

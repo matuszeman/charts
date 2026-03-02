@@ -1,0 +1,16 @@
+suite: configs-no-global
+templates:
+  - configs.yaml
+set:
+  appName: test
+  appVersion: 1.0.0
+tests:
+  - it: when global.idpAppConfig not specified, then do not fail and generate
+    set:
+      configs:
+        cm:
+          content:
+            some: data
+    asserts:
+      - hasDocuments:
+          count: 1

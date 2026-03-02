@@ -1,12 +1,7 @@
 {{- if not .Values.debug -}}
 {{- if not (empty .Values.configs) }}
-{{- $values := .Values }}
-{{- $idpAppConfig := default (dict) (get $values.global "idpAppConfig") }}
-{{- $defaults := default (dict) (get $idpAppConfig "defaults") }}
-{{- $defaultsConfigs := default (dict) (get $defaults "configs") }}
-{{- $defaultsConfigsAnnotations := default (dict) (get $defaultsConfigs "annotations") }}
-{{- $defaultsConfigsExternalSecret := default (dict) (get $defaultsConfigs "externalSecret") }}
-{{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
+{{- $defaultsConfigsAnnotations := ((((.Values.global).idpAppConfig).defaults).configs).annotations | default (dict) }}
+{{- $defaultsConfigsExternalSecret := ((((.Values.global).idpAppConfig).defaults).configs).externalSecret | default (dict) }}
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) }}
@@ -147,6 +142,7 @@ data:
 {{- end }}
 {{- end }}
 {{- if $secretStore }}
+{{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: SecretStore
