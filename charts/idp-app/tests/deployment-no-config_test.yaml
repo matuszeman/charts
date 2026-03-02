@@ -1,0 +1,33 @@
+suite: deployment-no-config
+templates:
+  - deployment.yaml
+set:
+  appName: test
+  appVersion: 1.0.0
+tests:
+  - it: when global.idpAppConfig not specified, then do not fail and generate
+    set:
+      deployment:
+        enabled: true
+      containers:
+        app:
+          image: test
+          imageTag: "1.0.0"
+          imageRepository: docker.io
+          resources:
+            requests:
+              memory: 50Mi
+              cpu: 1m
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.template.spec.containers[0]
+          value:
+            image: docker.io/test:1.0.0
+            imagePullPolicy: IfNotPresent
+            name: app
+            resources:
+              requests:
+                cpu: 1m
+                memory: 50Mi
