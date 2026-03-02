@@ -10,6 +10,17 @@ tests:
       - ../values-ci.yaml
     asserts:
       - matchSnapshot: {}
+  - it: when global.idpAppConfig not specified, then do not fail and generate config
+    set:
+      global: {}
+      configs:
+        cm:
+          content:
+            some: data
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: configs.yaml
   - it: when fromConfigMap is specified, then do not generate managed ConfigMap and generate deployment volume
     values:
       - values/deployment.yaml
