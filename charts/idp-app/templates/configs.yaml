@@ -1,12 +1,16 @@
 {{- if not .Values.debug -}}
 {{- if not (empty .Values.configs) }}
 {{- $values := .Values }}
-{{- $defaults := $values.global.idpAppConfig.defaults }}
+{{- $idpAppConfig := default (dict) (get $values.global "idpAppConfig") }}
+{{- $defaults := default (dict) (get $idpAppConfig "defaults") }}
+{{- $defaultsConfigs := default (dict) (get $defaults "configs") }}
+{{- $defaultsConfigsAnnotations := default (dict) (get $defaultsConfigs "annotations") }}
+{{- $defaultsConfigsExternalSecret := default (dict) (get $defaultsConfigs "externalSecret") }}
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) }}
-{{- $mergedAnnotations := merge (dict) $defaults.configs.annotations (default $configSpec.annotations dict) }}
+{{- $mergedAnnotations := merge (dict) $defaultsConfigsAnnotations (default $configSpec.annotations dict) }}
 {{- if or .fromSecret .fromConfigMap }}
 {{- else if (kindIs "map" .secret) }}
 ---
@@ -86,7 +90,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  refreshInterval: {{ default (required "defaults.configs.externalSecret.refreshInterval required" $defaults.configs.externalSecret.refreshInterval) .refreshInterval | quote }}
+  refreshInterval: {{ default (required "defaults.configs.externalSecret.refreshInterval required" (get $defaultsConfigsExternalSecret "refreshInterval")) .refreshInterval | quote }}
   secretStoreRef:
     name: {{ include "idp-app.fullname" $ }}-config-secretsmanager
     kind: SecretStore
@@ -151,7 +155,7 @@ metadata:
   labels:
     {{- $storeLabels := include "idp-app.labels" $ | fromYaml }}
     {{- toYaml $storeLabels | nindent 4 }}
-  {{- $storeAnnotations := merge (dict) $defaults.configs.annotations }}
+  {{- $storeAnnotations := $defaultsConfigsAnnotations }}
   {{- with $storeAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
