@@ -46,7 +46,9 @@ metadata:
   labels:
     {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
   annotations:
+    {{- if $ingress.certManagerClusterIssuer }}
     cert-manager.io/cluster-issuer: {{ $ingress.certManagerClusterIssuer }}
+    {{- end }}
     {{- if eq $svcPort "fcgi" }}
     nginx.ingress.kubernetes.io/backend-protocol: "FCGI"
     nginx.ingress.kubernetes.io/fastcgi-index: index.php
