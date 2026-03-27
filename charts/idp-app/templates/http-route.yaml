@@ -18,12 +18,16 @@
 {{- end }}
 {{- $routeName := join "-" (compact (list $deploymentName $routeKey)) }}
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
-{{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
 {{- $host := "" }}
+{{- if $route.domain }}
+{{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
 {{- if $route.host }}
 {{- $host = (printf "%s.%s" $route.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- else }}
 {{- $host = $domain }}
+{{- end }}
+{{- else }}
+{{- $host = ($route.host | required "httpRoute: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- end }}
 {{- $gatewayParentName := $gateway.name | required "global.idpAppConfig.httpGateways.NAME.name required" }}
 {{- $gatewayParentNamespace := $gateway.namespace | default $.Release.Namespace }}
