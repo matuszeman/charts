@@ -167,3 +167,30 @@ tests:
       - equal:
           path: spec.tls[0].hosts[0]
           value: example.com
+  - it: when host is FQDN (no domain), should use host directly
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        host: myapp.example.com
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: myapp.example.com
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: myapp.example.com
+  - it: when neither host nor domain is set, should fail
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress: host or domain required"

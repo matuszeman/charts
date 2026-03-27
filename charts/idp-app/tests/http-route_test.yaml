@@ -95,6 +95,21 @@ tests:
       - failedTemplate:
           errorMessage: "forwardAuth filter is only supported with traefik gateway controller"
 
+  - it: when host is FQDN (no domain), should use host directly
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          host: myapp.example.com
+          path: /
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: myapp.example.com
+
   - it: multi support
     values:
       - values/multi.yaml
