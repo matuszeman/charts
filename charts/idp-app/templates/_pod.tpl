@@ -75,13 +75,16 @@ spec:
     {{- with $.Values.volumes }}
     {{- range $name, $spec := . }}
     - name: {{ $name }}
-      {{- if and $spec.persistentVolumeClaim (not $spec.persistentVolumeClaim.claimName) }}
-      {{- $pvcName := join "-" (compact (list $deploymentName $name)) }}
+    {{- if $spec.persistentVolumeClaim }}
+    {{- if not $spec.persistentVolumeClaim.claimName }}
       persistentVolumeClaim:
-        claimName: {{ $pvcName }}
-      {{- else }}
-      {{- toYaml $spec | nindent 6 }}
-      {{- end }}
+        claimName: {{ join "-" (compact (list $deploymentName $name)) }}
+    {{- else }}
+      {{ toYaml $spec | nindent 6 }}
+    {{- end }}
+    {{- else }}
+      {{ toYaml $spec | nindent 6 }}
+    {{- end }}
     {{- end }}
     {{- end }}
   nodeSelector:
