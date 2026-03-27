@@ -1,5 +1,4 @@
 global:
-  debug: true
   cluster: test
 
   appVersion: 0.1.0
