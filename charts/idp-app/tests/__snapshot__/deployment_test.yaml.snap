@@ -219,6 +219,10 @@ should match snapshot with values-ci.yaml:
                   memory: 128Mi
           enableServiceLinks: false
           nodeSelector: null
+          securityContext:
+            fsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
           serviceAccountName: RELEASE-NAME-resource-suffix
           tolerations: null
           topologySpreadConstraints:

@@ -1,0 +1,40 @@
+# Example: One chart for all workload types
+# Switch between Deployment, StatefulSet, Job, and CronJob by toggling the
+# relevant top-level key. Only one should be enabled at a time.
+
+appName: my-app
+appVersion: "1.0.0"
+
+containers:
+  app:
+    image: my-app
+    imageTag: "1.0.0"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# --- Deployment (or StatefulSet) ---
+deployment:
+  enabled: true
+  kind: Deployment        # Switch to StatefulSet for stateful workloads
+
+service:
+  enabled: true
+  port: 80
+
+# --- Job (run once to completion) ---
+# deployment:
+#   enabled: false
+# job:
+#   enabled: true
+#   backoffLimit: 3
+#   ttlSecondsAfterFinished: 300
+
+# --- CronJob (scheduled recurring job) ---
+# deployment:
+#   enabled: false
+# cronjob:
+#   enabled: true
+#   schedule: "0 */6 * * *"
+#   concurrencyPolicy: Forbid

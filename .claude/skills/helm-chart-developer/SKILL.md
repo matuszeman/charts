@@ -20,7 +20,7 @@ helm template .
 
 ## helm unittest
 
-Only when helm chart implements `tests` folder, assume it's for `helm unittest` plugin and follow the below:
+When helm chart implements `tests` folder, assume it's for `helm unittest` plugin and follow the below:
 
 ```sh
 # Run integration snapshot test
@@ -50,3 +50,10 @@ helm show readme <REPO>/<CHART>
 
 When dependency repo is local reference `file://local-path`, use `/local-path` only instead for commands above.
 
+# Tools
+
+### helm unittest
+
+```
+helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 0.3.3
+```

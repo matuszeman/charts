@@ -59,6 +59,10 @@
 #     defaults:
 #       imageRepository: private      # Default registry alias for all containers
 #       imagePullPolicy: IfNotPresent
+#       securityContext:              # Default pod-level securityContext applied to all charts (merged with per-chart securityContext)
+#         runAsNonRoot: true
+#         runAsUser: 1000
+#         fsGroup: 1000
 #       ingress:
 #         enabled: false
 #         className: nginx-external

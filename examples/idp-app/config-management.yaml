@@ -1,0 +1,84 @@
+# Example: Config management built in
+# The configs block creates Kubernetes resources (ConfigMap, Secret,
+# ExternalSecret, SealedSecret) and the chart wires up volume mounts and
+# environment variables automatically — all validated at template render time.
+
+appName: my-app
+appVersion: "1.0.0"
+
+deployment:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# Config definitions
+# ---------------------------------------------------------------------------
+
+configs:
+  # Inline ConfigMap
+  app-config:
+    content:
+      config.yaml: |
+        server:
+          port: 8080
+          logLevel: info
+      feature-flags.json: '{"new-ui": true}'
+
+  # Inline Secret (Opaque)
+  app-secrets:
+    secret: {}
+    content:
+      db_password: s3cr3t
+      api_key: mykey
+
+  # AWS Secrets Manager via External Secrets Operator
+  aws-credentials:
+    awsSecret:
+      arn: arn:aws:secretsmanager:eu-central-1:123456789012:secret:my-app/prod
+
+  # Reference an existing ConfigMap (not managed by this chart)
+  shared-config:
+    fromConfigMap: "platform-shared-config"
+
+  # Reference an existing Secret (not managed by this chart)
+  shared-secret:
+    fromSecret: "platform-shared-secret"
+
+# ---------------------------------------------------------------------------
+# Containers — mount configs via configDirs, configFiles, or env
+# ---------------------------------------------------------------------------
+
+containers:
+  app:
+    image: my-app
+    imageTag: "1.0.0"
+    containerPort: 8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+    # Mount entire config as a directory
+    configDirs:
+      app-config:     /etc/app
+      app-secrets:    /run/secrets/app
+      aws-credentials: /run/secrets/aws
+
+    # Mount individual files from a config
+    configFiles:
+      shared-config:
+        settings.yaml: /etc/platform/settings.yaml
+
+    # Inject config values as environment variables
+    env:
+      DB_PASSWORD:
+        config:
+          name: app-secrets          # auto-detects ConfigMap vs Secret
+          key: db_password
+      API_KEY:
+        config:
+          name: aws-credentials
+          key: api_key
+      FEATURE_FLAG:
+        config:
+          name: shared-config
+          key: feature-enabled
