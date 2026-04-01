@@ -1,4 +1,5 @@
 # Example: Automatic rolling restarts on config changes
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-rolling-restarts_test.yaml.snap
 # Setting restartPodOnUpdate on a config causes pods to restart automatically
 # when the config content changes, without any manual annotation management.
 #

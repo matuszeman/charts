@@ -1,4 +1,5 @@
 # Example: Config management built in
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-config-management_test.yaml.snap
 # The configs block creates Kubernetes resources (ConfigMap, Secret,
 # ExternalSecret, SealedSecret) and the chart wires up volume mounts and
 # environment variables automatically — all validated at template render time.

@@ -1,4 +1,5 @@
 # Example: One chart for all workload types
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-workload-types_test.yaml.snap
 # Switch between Deployment, StatefulSet, Job, and CronJob by toggling the
 # relevant top-level key. Only one should be enabled at a time.
 

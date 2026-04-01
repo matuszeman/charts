@@ -1,4 +1,5 @@
 # Example: Multi-cluster aware configuration
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-multi-cluster_test.yaml.snap
 # global.idpAppConfig is set once at the umbrella chart level and shared across
 # all app charts. Each app chart references clusters, domains, node pools, and
 # gateways by name — switching clusters requires only changing global.cluster.

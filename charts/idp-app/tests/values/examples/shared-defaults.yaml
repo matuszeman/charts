@@ -1,4 +1,5 @@
 # Example: Shared defaults via global.idpAppConfig.defaults
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-shared-defaults_test.yaml.snap
 # Defaults are set once in the umbrella chart and inherited by every app chart.
 # Individual charts can override any field.
 

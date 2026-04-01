@@ -1,4 +1,5 @@
 # Comprehensive idp-app example — shows most available features.
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-comprehensive_test.yaml.snap
 # The global section is typically set at the umbrella chart level and shared
 # across all app charts in a release.
 

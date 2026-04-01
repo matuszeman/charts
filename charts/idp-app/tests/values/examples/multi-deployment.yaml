@@ -1,4 +1,5 @@
 # Example: Multiple deployments from one release
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-multi-deployment_test.yaml.snap
 # deployment.multi creates several Deployments (or StatefulSets) from a single
 # Helm release. Each key becomes a name suffix. The containers map at the multi
 # level is deep-merged over the top-level containers, so shared config is
@@ -37,6 +38,17 @@ deployment:
 service:
   enabled: true
   port: 80
+
+# __DEPLOYMENT_ID__ is replaced with the deployment key for each entry in
+# deployment.multi, producing one HTTPRoute per deployment:
+#   api.example.com, worker.example.com, scheduler.example.com
+httpRoutes:
+  public:
+    enabled: true
+    gatewayName: http-public
+    domain: example.com
+    host: __DEPLOYMENT_ID__
+    path: /
 
 # ---------------------------------------------------------------------------
 # Shared container spec — inherited by all entries in deployment.multi
