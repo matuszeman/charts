@@ -1,11 +1,15 @@
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code ONLY in this folder and all subfolders.
-Skills: Load from `../.claude`
 
 # Purpose
 
 This folder contains integration tests for the `idp-app` and `idp-app-config` charts.
+
+# Project configuration
+
+**Scope:** You are restricted to this directory only. NEVER try to read anything from outside of this folder.
+**Skills:** Load from `../.claude`
 
 # Structure
 
