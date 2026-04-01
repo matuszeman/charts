@@ -59,6 +59,15 @@ Update snapshots after intentional changes:
 helm unittest . -u
 ```
 
+## Versioning
+
+Use semantic versioning.
+
+Always bump the version when:
+* major version - after breaking changes - incompatible with previous version, when user must update their values.yaml to get same behaviour, or when removing some features.
+* minor version - after implementing new feature
+* patch version - after fixing a bug
+
 ## Architecture
 
 ### Charts
