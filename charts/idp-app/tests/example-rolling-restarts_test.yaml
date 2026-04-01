@@ -1,0 +1,9 @@
+suite: example - rolling restarts
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot
+    values:
+      - values/examples/rolling-restarts.yaml
+    asserts:
+      - matchSnapshot: {}

@@ -1,0 +1,157 @@
+should match snapshot:
+  1: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: my-app
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: my-app
+        spec:
+          containers:
+            - image: 123456.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.0.0
+              imagePullPolicy: IfNotPresent
+              name: app
+              ports:
+                - containerPort: 8080
+                  name: app
+                  protocol: TCP
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+          enableServiceLinks: false
+          nodeSelector:
+            role: worker
+          serviceAccountName: RELEASE-NAME
+          tolerations:
+            - effect: NoSchedule
+              key: role
+              operator: Equal
+              value: worker
+          topologySpreadConstraints:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: my-app
+              maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: my-app
+              maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+          volumes: null
+  2: |
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-public
+    spec:
+      hostnames:
+        - my-app.example.com
+      parentRefs:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: http-public
+          namespace: gateway
+      rules:
+        - backendRefs:
+            - group: ""
+              kind: Service
+              name: RELEASE-NAME
+              namespace: NAMESPACE
+              port: 80
+              weight: 1
+          matches:
+            - path:
+                type: PathPrefix
+                value: /
+  3: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        cert-manager.io/cluster-issuer: default
+        nginx.ingress.kubernetes.io/enable-access-log: "true"
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      ingressClassName: nginx-internal
+      rules:
+        - host: my-app.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: RELEASE-NAME
+                    port:
+                      number: 80
+                path: /
+                pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - my-app.example.com
+          secretName: RELEASE-NAME-ingress-tls
+  4: |
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      minAvailable: 50%
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: my-app
+  5: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      ports:
+        - name: app
+          port: 80
+          protocol: TCP
+          targetPort: app
+      selector:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: my-app
+      type: ClusterIP

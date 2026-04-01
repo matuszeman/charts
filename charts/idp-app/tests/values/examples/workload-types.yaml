@@ -9,6 +9,7 @@ containers:
   app:
     image: my-app
     imageTag: "1.0.0"
+    containerPort: 8080
     resources:
       requests:
         cpu: 100m

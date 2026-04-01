@@ -1,0 +1,9 @@
+suite: example - workload types
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot
+    values:
+      - values/examples/workload-types.yaml
+    asserts:
+      - matchSnapshot: {}

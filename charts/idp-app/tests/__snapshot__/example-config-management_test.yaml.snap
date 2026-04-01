@@ -1,0 +1,195 @@
+should match snapshot:
+  1: |
+    apiVersion: v1
+    data:
+      config.yaml: |
+        server:
+          port: 8080
+          logLevel: info
+      feature-flags.json: '{"new-ui": true}'
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-app-config
+  2: |
+    apiVersion: v1
+    data:
+      api_key: bXlrZXk=
+      db_password: czNjcjN0
+    kind: Secret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-app-secrets
+    type: Opaque
+  3: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-aws-credentials
+    spec:
+      dataFrom:
+        - extract:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: arn:aws:secretsmanager:eu-central-1:123456789012:secret:my-app/prod
+            metadataPolicy: None
+      refreshInterval: 99999h
+      secretStoreRef:
+        kind: SecretStore
+        name: RELEASE-NAME-config-secretsmanager
+      target:
+        creationPolicy: Owner
+        name: RELEASE-NAME-config-aws-credentials
+        template:
+          engineVersion: v2
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/name: my-app
+              app.kubernetes.io/version: 1.0.0
+  4: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: SecretStore
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-secretsmanager
+    spec:
+      provider:
+        aws:
+          auth:
+            jwt:
+              serviceAccountRef:
+                name: RELEASE-NAME
+          region: eu-central-1
+          service: SecretsManager
+  5: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: my-app
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: my-app
+        spec:
+          containers:
+            - env:
+                - name: API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      key: api_key
+                      name: RELEASE-NAME-config-aws-credentials
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: db_password
+                      name: RELEASE-NAME-config-app-secrets
+                - name: FEATURE_FLAG
+                  valueFrom:
+                    configMapKeyRef:
+                      key: feature-enabled
+                      name: platform-shared-config
+              image: 123456.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.0.0
+              imagePullPolicy: IfNotPresent
+              name: app
+              ports:
+                - containerPort: 8080
+                  name: app
+                  protocol: TCP
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+              volumeMounts:
+                - mountPath: /etc/app
+                  name: config-app-config
+                  readOnly: true
+                - mountPath: /run/secrets/app
+                  name: config-app-secrets
+                  readOnly: true
+                - mountPath: /run/secrets/aws
+                  name: config-aws-credentials
+                  readOnly: true
+                - mountPath: /etc/platform/settings.yaml
+                  name: config-shared-config
+                  readOnly: true
+                  subPath: settings.yaml
+          enableServiceLinks: false
+          nodeSelector: null
+          serviceAccountName: RELEASE-NAME
+          tolerations: null
+          topologySpreadConstraints:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: my-app
+              maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: my-app
+              maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+          volumes:
+            - configMap:
+                name: RELEASE-NAME-config-app-config
+              name: config-app-config
+            - name: config-app-secrets
+              secret:
+                secretName: RELEASE-NAME-config-app-secrets
+            - name: config-aws-credentials
+              secret:
+                secretName: RELEASE-NAME-config-aws-credentials
+            - configMap:
+                name: platform-shared-config
+              name: config-shared-config
+  6: |
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      minAvailable: 50%
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: my-app

@@ -1,0 +1,9 @@
+suite: example - multi cluster
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot
+    values:
+      - values/examples/multi-cluster.yaml
+    asserts:
+      - matchSnapshot: {}

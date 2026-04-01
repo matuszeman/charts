@@ -1,0 +1,171 @@
+should match snapshot:
+  1: |
+    apiVersion: v1
+    data:
+      config.yaml: |
+        server:
+          port: 8080
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-app-config
+  2: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-app-secrets-a8d0d13
+    spec:
+      dataFrom:
+        - extract:
+            conversionStrategy: Default
+            decodingStrategy: None
+            key: arn:aws:secretsmanager:eu-central-1:123456789012:secret:my-app/prod
+            metadataPolicy: None
+      refreshInterval: 99999h
+      secretStoreRef:
+        kind: SecretStore
+        name: RELEASE-NAME-config-secretsmanager
+      target:
+        creationPolicy: Owner
+        name: RELEASE-NAME-config-app-secrets-a8d0d13
+        template:
+          engineVersion: v2
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/name: my-app
+              app.kubernetes.io/version: 1.0.0
+  3: |
+    apiVersion: v1
+    data:
+      static.yaml: |
+        key: value
+    kind: ConfigMap
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-static-config
+  4: |
+    apiVersion: external-secrets.io/v1beta1
+    kind: SecretStore
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-secretsmanager
+    spec:
+      provider:
+        aws:
+          auth:
+            jwt:
+              serviceAccountRef:
+                name: RELEASE-NAME
+          region: eu-central-1
+          service: SecretsManager
+  5: |
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      replicas: 1
+      revisionHistoryLimit: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: my-app
+      template:
+        metadata:
+          annotations:
+            config-hash-app-config: d9bbd81eb04bc46f737051fb550b84b0f29b66ca
+          labels:
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/name: my-app
+        spec:
+          containers:
+            - image: 123456.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.0.0
+              imagePullPolicy: IfNotPresent
+              name: app
+              ports:
+                - containerPort: 8080
+                  name: app
+                  protocol: TCP
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+              volumeMounts:
+                - mountPath: /etc/app
+                  name: config-app-config
+                  readOnly: true
+                - mountPath: /run/secrets
+                  name: config-app-secrets
+                  readOnly: true
+                - mountPath: /etc/static
+                  name: config-static-config
+                  readOnly: true
+          enableServiceLinks: false
+          nodeSelector: null
+          serviceAccountName: RELEASE-NAME
+          tolerations: null
+          topologySpreadConstraints:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: my-app
+              maxSkew: 1
+              topologyKey: topology.kubernetes.io/zone
+              whenUnsatisfiable: ScheduleAnyway
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: RELEASE-NAME
+                  app.kubernetes.io/name: my-app
+              maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+          volumes:
+            - configMap:
+                name: RELEASE-NAME-config-app-config
+              name: config-app-config
+            - name: config-app-secrets
+              secret:
+                secretName: RELEASE-NAME-config-app-secrets-a8d0d13
+            - configMap:
+                name: RELEASE-NAME-config-static-config
+              name: config-static-config
+  6: |
+    apiVersion: policy/v1
+    kind: PodDisruptionBudget
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME
+    spec:
+      minAvailable: 50%
+      selector:
+        matchLabels:
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/name: my-app

@@ -8,6 +8,11 @@ global:
     imageRepositories:
       private: 123456.dkr.ecr.eu-central-1.amazonaws.com
 
+    clusters:
+      production:
+        domains:
+          public: example.com
+
     defaults:
       # Default image registry alias — used when containers.*.imageRepository is not set
       imageRepository: private
@@ -65,6 +70,7 @@ containers:
   app:
     image: my-app
     imageTag: "1.0.0"
+    containerPort: 8080
     imageRepository: public  # overrides the default "private" registry for this container
     resources:
       requests:
