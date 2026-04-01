@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(helm show:*)",
+      "Bash(helm template:*)",
+      "Bash(helm unittest:*)"
+    ]
+  }
+}

@@ -35,29 +35,6 @@ helm unittest . -f tests/deployment_test.yaml
 
 In `/tests/test` folder:
 
-```sh
-cd tests/test
-```
-
-Update to current versions of idp-app and idp-app-config example chart:
-```sh
-helm dep up
-```
-
-Verify rendering:
-```sh
-helm template .
-```
-
-Run unit tests (snapshot):
-```sh
-helm unittest .
-```
-
-Update snapshots after intentional changes:
-```sh
-helm unittest . -u
-```
 
 ## values.yaml Documentation
 
