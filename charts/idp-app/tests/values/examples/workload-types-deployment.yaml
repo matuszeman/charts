@@ -1,0 +1,7 @@
+deployment:
+  enabled: true
+  kind: Deployment
+
+service:
+  enabled: true
+  port: 80
