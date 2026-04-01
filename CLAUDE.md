@@ -59,6 +59,14 @@ Update snapshots after intentional changes:
 helm unittest . -u
 ```
 
+## values.yaml Documentation
+
+When implementing a new feature or updating an existing one in helm chart:
+
+- Add or update the corresponding section in `values.yaml` with commented examples showing all valid options and their effect.
+- Uncomment new fields as defaults where appropriate; leave optional/advanced fields commented out.
+- Keep `values-ci.yaml` as the authoritative functional example — it should exercise all features that have tests.
+
 ## Versioning
 
 Use semantic versioning.

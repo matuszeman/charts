@@ -1,160 +1,655 @@
+# idp-app — General-purpose Helm chart for deploying Kubernetes workloads.
+# Supports Deployment, StatefulSet, Job, and CronJob kinds.
+# Intended to be used directly or as a Helm dependency.
+#
+# GLOBAL CONFIG (set at the umbrella chart or release level, not here):
+# global:
+#   cluster: production           # Must match a key in global.idpAppConfig.clusters
+#   idpAppConfig:
+#     # Named image registry aliases — referenced by containers.*.imageRepository
+#     imageRepositories:
+#       private: 123456.dkr.ecr.eu-central-1.amazonaws.com
+#       public:  public.ecr.aws/123456
+#
+#     # Per-cluster configuration
+#     clusters:
+#       production:
+#         aws_region: eu-central-1
+#         # Named domain suffixes — referenced by ingress.domain / httpRoutes.*.domain
+#         domains:
+#           example.com: example.com
+#           internal:    internal.example.com
+#         # Named node pools — referenced by nodePool value
+#         nodePools:
+#           workers:
+#             nodeSelector:
+#               role: worker
+#             tolerations:
+#               - key: role
+#                 operator: Equal
+#                 value: worker
+#                 effect: NoSchedule
+#         # Named HTTP Gateways — referenced by httpRoutes.*.gatewayName
+#         httpGateways:
+#           http-public:
+#             controller: traefik     # Only "traefik" is currently supported for forwardAuth
+#             name: http-public
+#             namespace: gateway
+#             labelSelector: {}       # Extra labels added to HTTPRoute/Middleware
+#         # Named apps — referenced by ingress.oauth2ProxyAuth.appName / httpRoutes.*.forwardAuth.appName
+#         apps:
+#           authelia:
+#             # nginx ingress oauth2-proxy auth settings
+#             authUrl:     http://authelia.auth.svc.cluster.local
+#             signinUrl:   https://auth.example.com
+#             path:        /oauth2
+#             responseHeaders:
+#               - Auth-Proxy-Email
+#               - Auth-Proxy-Groups
+#             # Traefik forwardAuth middleware settings
+#             traefik:
+#               forwardAuthMiddleware:
+#                 address:              http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+#                 trustForwardHeader:   true
+#                 authResponseHeaders:
+#                   - Remote-User
+#                   - Remote-Groups
+#
+#     # Chart-wide defaults (merged with per-chart ingress / httpRoute / configs values)
+#     defaults:
+#       imageRepository: private      # Default registry alias for all containers
+#       imagePullPolicy: IfNotPresent
+#       ingress:
+#         enabled: false
+#         className: nginx-external
+#         certManagerClusterIssuer: letsencrypt-prod
+#         path: /
+#         accessLog:
+#           enabled: true
+#         basicAuth:
+#           enabled: false
+#           secretName: ""
+#         oauth2ProxyAuth:
+#           enabled: false
+#       httpRoute:
+#         enabled: false
+#         pathType: PathPrefix
+#         annotations: {}
+#         forwardAuth:
+#           enabled: false
+#       configs:
+#         annotations: {}
+#         externalSecret:
+#           refreshInterval: "99999h"
+
+# ---------------------------------------------------------------------------
+# Core identity
+# ---------------------------------------------------------------------------
+
+# appName — [required] Used as app.kubernetes.io/name label.
 appName:
+
+# appVersion — [required] Used as app.kubernetes.io/version label. Supports tpl.
+# Example: appVersion: "{{ .Values.global.appVersion }}"
 appVersion:
-# resourceNameSuffix used when two or more idp-apps are deployed in the same helm release
+
+# resourceNameSuffix — Set when two or more idp-app instances share the same Helm release
+# to avoid resource name collisions. Supports tpl.
+# Example: resourceNameSuffix: backend
 resourceNameSuffix: ""
 
-# Pod
+# ---------------------------------------------------------------------------
+# Pod configuration
+# ---------------------------------------------------------------------------
+
+# replicaCount — Number of pod replicas. Ignored when autoscaling is enabled.
 replicaCount: 1
+
+# podAnnotations — Arbitrary annotations added to every pod.
 podAnnotations: {}
-affinity: {}
-#terminationGracePeriodSeconds: 30
+
+# restartPolicy — Override pod restartPolicy. Defaults to "OnFailure" for Job/CronJob,
+# otherwise unset (Kubernetes default is "Always").
+# Valid values: Always | OnFailure | Never
 restartPolicy: null
+
+# securityContext — Pod-level security context (applies to all containers).
+# Example:
+# securityContext:
+#   runAsNonRoot: true
+#   runAsUser: 1000
+#   fsGroup: 1000
 securityContext: null
 
-nodePool: null
-nodeSelector: {}
-tolerations: []
+# terminationGracePeriodSeconds — Override the default 30-second grace period.
+#terminationGracePeriodSeconds: 30
 
-topologySpreadConstraints:
-  zone: true
-  node: true
-
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 50%
-  maxUnavailable:
-
+# enableServiceLinks — Inject service environment variables into pods. Disabled by default
+# to reduce startup noise and avoid conflicts.
 enableServiceLinks: false
 
+# nodePool — Reference a named node pool from global.idpAppConfig.clusters.<cluster>.nodePools.
+# Adds matching nodeSelector and tolerations to every pod.
+# Example: nodePool: workers
+nodePool: null
+
+# nodeSelector — Direct node selector labels (merged with nodePool selection).
+nodeSelector: {}
+
+# tolerations — Direct pod tolerations (merged with nodePool tolerations).
+tolerations: []
+
+# affinity — Standard Kubernetes affinity rules.
+# Example:
+# affinity:
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#       - weight: 100
+#         podAffinityTerm:
+#           labelSelector:
+#             matchLabels:
+#               app.kubernetes.io/name: my-app
+#           topologyKey: kubernetes.io/hostname
+affinity: {}
+
+# topologySpreadConstraints — Spread pods across zones and nodes (ScheduleAnyway).
+topologySpreadConstraints:
+  zone: true   # Spread across topology.kubernetes.io/zone
+  node: true   # Spread across kubernetes.io/hostname
+
+# podDisruptionBudget — Protect availability during voluntary disruptions.
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%   # Can be a percentage or absolute number. Takes precedence over maxUnavailable.
+  maxUnavailable:     # Alternative to minAvailable. Example: maxUnavailable: 1
+
+# ---------------------------------------------------------------------------
+# Containers
+# ---------------------------------------------------------------------------
+
+# containers — Map of container specs. The "app" key is required.
+# Additional containers (sidecars) can be added as sibling keys alongside "app".
+containers:
+  app:
+    # image — [required] Image name (without registry prefix or tag).
+    #image: my-app
+
+    # imageTag — [required] Image tag. Supports tpl.
+    # Example: imageTag: "{{ .Values.global.appVersion }}"
+    #imageTag: "1.0.0"
+
+    # imageRepository — Override the global default registry alias.
+    # Must match a key in global.idpAppConfig.imageRepositories, or be a full registry URL.
+    # Example: imageRepository: public
+    #imageRepository: private
+
+    # imagePullPolicy — Override the global default (IfNotPresent).
+    # Valid values: Always | IfNotPresent | Never
+    #imagePullPolicy: IfNotPresent
+
+    # securityContext — Container-level security context.
+    # Example:
+    # securityContext:
+    #   capabilities:
+    #     drop:
+    #       - ALL
+    #   readOnlyRootFilesystem: true
+    #   runAsNonRoot: true
+    #   runAsUser: 1000
+    #securityContext: {}
+
+    # containerPort — Expose a named port from this container.
+    # Required when service.enabled is true for the "app" container.
+    #containerPort: 8080
+
+    # additionalPorts — Extra ports to expose from this container.
+    # Example:
+    # additionalPorts:
+    #   - name: metrics
+    #     containerPort: 9090
+    #additionalPorts: []
+
+    # command — Override the container entrypoint.
+    # Example:
+    # command:
+    #   - /bin/sh
+    #   - -c
+    #command: []
+
+    # args — Override the container command arguments.
+    # Example:
+    # args:
+    #   - --config=/etc/app/config.yaml
+    #args: []
+
+    resources:
+      limits: {}
+        # cpu: 200m
+        # memory: 256Mi
+        # ephemeralStorage: 1Gi
+      requests: {}
+        # cpu: 100m
+        # memory: 128Mi
+
+    # env — Environment variables. Supports multiple forms:
+    # env:
+    #   # Scalar value (string, int, float, bool) — supports tpl
+    #   APP_ENV: production
+    #   REPLICA: "{{ .Release.Name }}"
+    #
+    #   # Reference a key from a config defined in the configs section (auto-detects ConfigMap vs Secret)
+    #   DB_PASSWORD:
+    #     config:
+    #       name: my-secrets   # must be a key in configs:
+    #       key: db_password
+    #
+    #   # Direct reference to an existing ConfigMap
+    #   FEATURE_FLAG:
+    #     configMapKeyRef:
+    #       name: feature-flags   # supports tpl
+    #       key: enabled
+    #
+    #   # Direct reference to an existing Secret
+    #   API_KEY:
+    #     secretKeyRef:
+    #       name: api-credentials   # supports tpl
+    #       key: api_key
+    #env: {}
+
+    # configDirs — Mount an entire config (ConfigMap or Secret) as a directory.
+    # Key is a config name from the configs section; value is the mount path.
+    # Example:
+    # configDirs:
+    #   app-config: /etc/app
+    #   app-secrets: /run/secrets/app
+    #configDirs: {}
+
+    # configFiles — Mount individual files from a config into specific paths.
+    # Example:
+    # configFiles:
+    #   app-config:
+    #     config.yaml: /etc/app/config.yaml
+    #     feature-flags.json: /etc/app/features.json
+    #configFiles: {}
+
+    # volumeMounts — Mount volumes (defined in the volumes section) by name.
+    # Example:
+    # volumeMounts:
+    #   app-data:
+    #     mountPath: /data
+    #     readOnly: false
+    #volumeMounts: {}
+
+    # volumeFiles — Mount individual files from a volume into specific paths.
+    # readOnly defaults to true unless explicitly set to false.
+    # Example:
+    # volumeFiles:
+    #   app-data:
+    #     config.yaml:
+    #       mountPath: /etc/app/config.yaml
+    #     writable-file.yaml:
+    #       mountPath: /etc/app/writable.yaml
+    #       readOnly: false
+    #volumeFiles: {}
+
+    # livenessProbe — Restart the container if this probe fails.
+    # Example:
+    # livenessProbe:
+    #   httpGet:
+    #     path: /healthz
+    #     port: app
+    #   initialDelaySeconds: 10
+    #   periodSeconds: 15
+    #livenessProbe: {}
+
+    # readinessProbe — Remove the pod from service endpoints if this probe fails.
+    # Example:
+    # readinessProbe:
+    #   httpGet:
+    #     path: /ready
+    #     port: app
+    #readinessProbe: {}
+
+    # startupProbe — Give the container extra time to start before liveness kicks in.
+    # Example:
+    # startupProbe:
+    #   httpGet:
+    #     path: /healthz
+    #     port: app
+    #   failureThreshold: 30
+    #   periodSeconds: 10
+    #startupProbe: {}
+
+    # lifecycle — Container lifecycle hooks.
+    # Example:
+    # lifecycle:
+    #   preStop:
+    #     exec:
+    #       command: ["/bin/sh", "-c", "sleep 5"]
+    #lifecycle: {}
+
+# ---------------------------------------------------------------------------
+# Configs — ConfigMaps, Secrets, and external secret sources
+# ---------------------------------------------------------------------------
+
+# configs — Map of config definitions. Each entry creates a ConfigMap, Secret,
+# ExternalSecret, or SealedSecret, or references an existing resource.
+# Configs are mounted into containers via configDirs, configFiles, or env.
+configs: {}
+# Example config definitions:
+#
+# configs:
+#   # Inline ConfigMap — creates a ConfigMap with the given key/value pairs
+#   app-config:
+#     content:
+#       config.yaml: |
+#         server:
+#           port: 8080
+#       feature-flags.json: '{"new-ui": true}'
+#     # defaultMode: 0644   # File permissions (octal, e.g. 0644 or 0755)
+#     # restartPodOnUpdate: PodAnnotation  # Add hash annotation to pod to trigger rolling restart
+#     # labels: {}          # Extra labels on the ConfigMap resource
+#     # annotations: {}     # Extra annotations on the ConfigMap resource
+#
+#   # Inline Secret — set secret: {} to create an Opaque Secret instead of ConfigMap
+#   app-secrets:
+#     secret: {}          # secret: {} = Opaque; secret: {type: kubernetes.io/tls} for other types
+#     content:
+#       db_password: s3cr3t
+#       api_key: mykey
+#     # defaultMode: 0400   # Restrictive permissions recommended for secrets
+#     # restartPodOnUpdate: NameSuffix  # Append content hash to resource name (forces pod restart)
+#
+#   # AWS Secrets Manager — pulls a secret via External Secrets Operator
+#   aws-secret:
+#     awsSecret:
+#       arn: arn:aws:secretsmanager:eu-central-1:123456789012:secret:my-app/prod
+#       versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222  # Optional; omit for AWSCURRENT
+#     # valuesHash: abc123   # Manual hash override (useful when arn/versionId don't change)
+#     # restartPodOnUpdate: NameSuffix
+#
+#   # SealedSecret — Bitnami sealed-secrets controller decrypts this at runtime
+#   sealed-config:
+#     sealedSecret:
+#       encryptedData:
+#         db_password: AgBy3i4OJSWK...
+#       # scope: cluster-wide  # Optional: cluster-wide | namespace-wide (default: strict)
+#
+#   # Reference an existing ConfigMap — no new resource is created
+#   existing-cm:
+#     fromConfigMap: "{{ .Release.Name }}-my-configmap"   # Supports tpl
+#     # valuesHash: abc123              # Provide a hash for restartPodOnUpdate to work
+#     # restartPodOnUpdate: NameSuffix  # Appends hash to the reference name
+#
+#   # Reference an existing Secret — no new resource is created
+#   existing-secret:
+#     fromSecret: "{{ .Release.Name }}-my-secret"         # Supports tpl
+
+# ---------------------------------------------------------------------------
+# Volumes
+# ---------------------------------------------------------------------------
+
+# volumes — Map of additional volume definitions.
+# Two PVC modes:
+#   - With claimName: reference an existing PVC.
+#   - Without claimName: auto-create a PVC (one per Deployment in deployment.multi).
 volumes: {}
 # Example volume configurations:
 # volumes:
-#   # Using existing PVC
+#   # Reference an existing PVC
 #   data:
 #     persistentVolumeClaim:
 #       claimName: my-existing-pvc
-#   # Auto-create PVC (claimName not specified)
+#
+#   # Auto-create a PVC (claimName not specified)
 #   app-data:
 #     persistentVolumeClaim:
-#       accessMode: ReadWriteOnce  # ReadWriteOnce, ReadWriteMany, ReadOnlyMany
+#       accessMode: ReadWriteOnce  # ReadWriteOnce | ReadWriteMany | ReadOnlyMany
 #       size: 10Gi
-#       storageClassName: ""  # Empty string for default storage class
+#       storageClassName: ""       # Empty string = cluster default storage class
 #       annotations: {}
-#       selector: {}  # Optional label selector for PV binding
-#       volumeName: ""  # Optional specific PV name to bind to
-#   # Other volume types
-#   config:
-#     configMap:
-#       name: my-config
-#   temp:
+#       selector: {}               # Optional: label selector for PV binding
+#       volumeName: ""             # Optional: bind to a specific PV by name
+#
+#   # EmptyDir (ephemeral, survives container restarts but not pod restarts)
+#   cache:
 #     emptyDir:
 #       sizeLimit: 1Gi
+#
+#   # ConfigMap volume (mount an external ConfigMap directly as a volume)
+#   shared-config:
+#     configMap:
+#       name: my-external-configmap
+
+# ---------------------------------------------------------------------------
+# Workload kind
+# ---------------------------------------------------------------------------
 
 deployment:
   enabled: false
-  #staticIps: ["192.168.88.9"]
+  # kind — Workload type. Deployment or StatefulSet.
+  # Valid values: Deployment | StatefulSet
   kind: Deployment
   annotations: {}
+  # revisionHistoryLimit — Number of old ReplicaSets to retain.
   revisionHistoryLimit: 1
-  #  multi:
-  #    one: {}
-  #    two: {}
+
+  # strategy — Update strategy for Deployment. Ignored for StatefulSet.
   # https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
-#  strategy:
-#    # RollingUpdate / Recreate
-#    type: RollingUpdate
-#    rollingUpdate:
-#      maxUnavailable: "25%"
-#      maxSurge: "25%"
+  # strategy:
+  #   type: RollingUpdate    # RollingUpdate | Recreate
+  #   rollingUpdate:
+  #     maxUnavailable: "25%"
+  #     maxSurge: "25%"
+
+  # staticIps — Create an EndpointSlice pointing to static IPs instead of pod selector.
+  # Useful for routing to off-cluster backends through a Kubernetes Service.
+  # Example: staticIps: ["10.0.0.1", "10.0.0.2"]
+  #staticIps: []
+
+  # multi — Create multiple Deployments/StatefulSets from one chart release.
+  # Each key becomes a name suffix appended to the release name.
+  # The containers map at the multi level is deep-merged over the top-level containers.
+  # Example:
+  # multi:
+  #   worker:
+  #     containers:
+  #       app:
+  #         command: ["worker"]
+  #         resources:
+  #           requests:
+  #             cpu: 500m
+  #             memory: 512Mi
+  #   api: {}   # Inherits top-level containers as-is
 
 job:
   enabled: false
   annotations: {}
+  # activeDeadlineSeconds: 3600   # Fail the Job if it runs longer than this many seconds
+  # backoffLimit: 3               # Number of retries before marking the Job as failed (default: 6)
+  # completions: 1                # Number of successfully completed pods required
+  # parallelism: 1                # Maximum number of pods running simultaneously
+  # ttlSecondsAfterFinished: 300  # Auto-delete Job this many seconds after completion
+  # suspend: false                # Suspend execution of the Job
 
 cronjob:
   enabled: false
   annotations: {}
+  # schedule — Cron expression for when to run the job.
   # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-syntax
-  #schedule: @hourly
-  # https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#concurrency-policy
+  # Examples: "@hourly", "0 */6 * * *", "*/15 * * * *"
+  #schedule: "@hourly"
+
+  # concurrencyPolicy — How to handle overlapping job executions.
+  # Allow: allow concurrent runs (default)
+  # Forbid: skip new run if previous is still running
+  # Replace: cancel previous run and start a new one
   concurrencyPolicy: "Allow"
   startingDeadlineSeconds: null
   failedJobsHistoryLimit: 3
   successfulJobsHistoryLimit: 3
 
-# Pod containers
-containers:
-  app:
-    #imagePullPolicy: IfNotPresent
-    #securityContext: {}
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: 1000
-    #env:
-    #  some: thing
-    #containerPort: 80
-    resources:
-      limits: {}
-      #cpu: 100m
-      #memory: 128Mi
-      requests: {}
-      #cpu: 100m
-      #memory: 128Mi
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+
+service:
+  enabled: false
+  type: ClusterIP    # ClusterIP | NodePort | LoadBalancer
+  # port — [required when enabled] Service port number.
+  #port: 80
+  # targetPort — Container port name or number to forward traffic to. Defaults to "app".
+  #targetPort: app
+  # portName — Override the default port name "app".
+  #portName: http
+  # additionalPorts — Extra ports exposed by the Service.
+  # Example:
+  # additionalPorts:
+  #   - name: metrics
+  #     port: 9090
+  #     targetPort: metrics
+
+# headlessService — Create a headless Service (clusterIP: None).
+# Useful for StatefulSets to enable DNS-based pod discovery (pod-0.svc, pod-1.svc, ...).
+headlessService:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Ingress (nginx-ingress controller)
+# ---------------------------------------------------------------------------
+
+# ingress — Single ingress definition. Merged with global.idpAppConfig.defaults.ingress.
+# For multiple ingresses use the ingresses map below.
+# Note: service.enabled must be true (or ingress.service must be set) for ingress to work.
+ingress: {}
+# Example ingress configuration:
+# ingress:
+#   enabled: true
+#   className: nginx-external          # Required (can be set in defaults)
+#
+#   # Host resolution (pick one):
+#   domain: example.com                # Named domain from clusters.<cluster>.domains — host is prepended
+#   host: my-app                       # With domain: results in my-app.example.com
+#   # host: my-app.example.com         # Without domain: used as full hostname directly
+#
+#   path: /                            # URL path prefix
+#   # rewriteTarget: /                 # Rewrite the path before forwarding (nginx rewrite-target)
+#
+#   certManagerClusterIssuer: letsencrypt-prod  # Annotate with cert-manager issuer for TLS
+#   annotations:
+#     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+#
+#   # FastCGI backend (e.g. PHP-FPM)
+#   # fcgi:
+#   #   documentRoot: /var/www/html
+#
+#   # HTTP Basic Authentication
+#   # basicAuth:
+#   #   enabled: true
+#   #   secretName: my-basic-auth-secret  # Must contain htpasswd data
+#
+#   # oauth2-proxy authentication (nginx external_auth)
+#   # oauth2ProxyAuth:
+#   #   enabled: true
+#   #   appName: authelia                # Named app from clusters.<cluster>.apps
+#   #   allowedGroups: ["admins"]        # Optional group restriction
+
+# ingresses — Map of additional named ingresses (same schema as ingress above).
+# Example: ingresses: { api: { enabled: true, ... }, admin: { enabled: true, ... } }
+ingresses: {}
+
+# ---------------------------------------------------------------------------
+# HTTPRoutes (Gateway API)
+# ---------------------------------------------------------------------------
+
+# httpRoutes — Map of HTTPRoute definitions (Gateway API).
+# Merged with global.idpAppConfig.defaults.httpRoute.
+# Note: service.enabled must be true (or httpRoute.service must be set).
+httpRoutes: {}
+# Example HTTPRoute configuration:
+# httpRoutes:
+#   public:
+#     enabled: true
+#     gatewayName: http-public         # Named gateway from clusters.<cluster>.httpGateways
+#
+#     # Host resolution (same as ingress — domain + host, or host alone):
+#     domain: example.com
+#     host: my-app                     # Results in my-app.example.com
+#
+#     path: /                          # [required] URL path to match
+#     pathType: PathPrefix             # PathPrefix | Exact | RegularExpression
+#
+#     annotations: {}                  # Annotations added to the HTTPRoute resource
+#
+#     # Extra Gateway API filters (appended after forwardAuth if enabled)
+#     # filters: []
+#
+#     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically)
+#     # forwardAuth:
+#     #   enabled: true
+#     #   appName: authelia            # Named app from clusters.<cluster>.apps
+#     #   allowedGroups: ["admins"]    # Optional group restriction
+
+# ---------------------------------------------------------------------------
+# Autoscaling (HorizontalPodAutoscaler)
+# ---------------------------------------------------------------------------
 
 autoscaling:
   enabled: false
   minReplicas: 2
-  #maxReplicas: 100
+  # maxReplicas: 10
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
   scaleDown:
-    # Options: Lean, Disabled
+    # preset — ScaleDown behaviour preset.
+    # Lean: scale down slowly (reduces flapping); Disabled: never scale down automatically.
     preset: Lean
     #stabilizationWindowSeconds: 1200
   scaleUp:
+    # preset — ScaleUp behaviour preset.
+    # Aggressive: scale up quickly on load spikes.
     preset: Aggressive
 
+# ---------------------------------------------------------------------------
+# Service Account
+# ---------------------------------------------------------------------------
+
 serviceAccount:
-  # Specifies whether a service account should be created
+  # create — Create a ServiceAccount resource for this workload.
   create: false
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
+  # name — Override the auto-generated service account name.
   name: ""
+  # awsRoleArn — Annotate the ServiceAccount with the AWS IAM role ARN for IRSA (IAM Roles for Service Accounts).
+  # Example: awsRoleArn: arn:aws:iam::123456789012:role/my-app-role
+  #awsRoleArn: ""
 
-service:
-  enabled: false
-  type: ClusterIP
-  #portName: http
-  #port: 80
-  #targetPort: http
-
-headlessService:
-  enabled: false
+# ---------------------------------------------------------------------------
+# Prometheus monitoring
+# ---------------------------------------------------------------------------
 
 prometheus:
   # https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.Endpoint
-#  port: prometheus-exporter
-#  path: /metrics
-#  params:
-#    module: default
-#    target: http://localhost:8060/event/channels-stats
+  # port — Named container port that exposes Prometheus metrics.
+  # port: prometheus-exporter
+  # path — HTTP path where metrics are served.
+  # path: /metrics
+  # params — Optional query parameters passed to the metrics scrape request.
+  # params:
+  #   module: [default]
   serviceMonitor:
     enabled: false
-    # MetricRelabelConfigs to apply to samples before ingestion
+    # metricRelabelings — Relabel rules applied to scraped metrics before ingestion.
     # Example:
     # metricRelabelings:
     #   - sourceLabels: [__name__]
-    #     regex: '(container_cpu_usage_seconds_total|container_memory_usage_bytes)'
+    #     regex: '(http_requests_total|process_cpu_seconds_total)'
     #     action: keep
     metricRelabelings: []
 
-ingresses: {}
-ingress: {}
+# ---------------------------------------------------------------------------
+# Debug
+# ---------------------------------------------------------------------------
 
-httpRoutes: {}
-
+# debug — When true, suppress all template output (useful to inspect values only).
 debug: false
