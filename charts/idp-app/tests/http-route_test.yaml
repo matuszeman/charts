@@ -110,6 +110,19 @@ tests:
           path: spec.hostnames[0]
           value: myapp.example.com
 
+  - it: when domain key is missing from cluster config, should fail
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: nonexistent
+          path: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.idpAppConfig.clusters.test.domains.nonexistent is not defined"
   - it: multi support
     values:
       - values/multi.yaml

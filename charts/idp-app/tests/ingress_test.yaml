@@ -194,3 +194,15 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: "ingress: host or domain required"
+  - it: when domain key is missing from cluster config, should fail
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: nonexistent
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.idpAppConfig.clusters.test.domains.nonexistent is not defined"

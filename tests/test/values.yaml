@@ -1,16 +1,23 @@
 global:
   cluster: test
 
-debug: true
-
 app:
-  debug: true
   appName: test
   appVersion: 1.0.0
+
+  deployment:
+    enabled: true
 
   containers:
     app:
       image: test
+      imageTag: 1.0.0
+      resources:
+        requests:
+          cpu: 100m
+          memory: 10Mi
+      configDirs:
+        app: /config/app
 
   configs:
     app:
