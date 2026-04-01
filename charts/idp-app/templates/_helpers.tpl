@@ -75,5 +75,5 @@ Create the name of the service account to use
 {{- $key := index . 1 | required "idp-app.clusterConfigMapValue: cluster config key param required" }}
 {{- $index := index . 2 | required (printf "idp-app.clusterConfigMapValue: key param for cluster config '%s' required" $key) }}
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
-{{- toYaml (index (index $cluster $key | required (printf "idp-app.clusterConfigMapValue: global.idpAppConfig.clusters.%s.%s required" $.Values.global.cluster $key)) $index) | required (printf "idp-app.clusterConfigMapValue: global.idpAppConfig.clusters.%s.%s.%s value is empty" $.Values.global.cluster $key $index) }}
+{{- index (index $cluster $key | required (printf "global.idpAppConfig.clusters.%s.%s is not defined" $.Values.global.cluster $key)) $index | required (printf "global.idpAppConfig.clusters.%s.%s.%s is not defined" $.Values.global.cluster $key $index) | toYaml }}
 {{- end }}

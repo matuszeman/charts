@@ -1,0 +1,5 @@
+suite: integration
+tests:
+  - it: should match snapshot
+    asserts:
+      - matchSnapshot: {}
