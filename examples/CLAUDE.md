@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Purpose
 
-This folder contains integration tests for the `idp-app` and `idp-app-config` charts.
+This folder contains integration tests / umbrella charts for the `idp-app` and `idp-app-config` charts.
 
 # Project configuration
 

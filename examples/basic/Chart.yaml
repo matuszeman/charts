@@ -1,11 +1,10 @@
 apiVersion: v2
-name: test
-description: Test chart
+name: app
 type: application
 version: 1.0.0
 dependencies:
   - name: idp-app-config
-    repository: 'file://../../examples/idp-app-config'
+    repository: 'file://../idp-app-config'
     version: x.x.x
     import-values:
       - child: global
