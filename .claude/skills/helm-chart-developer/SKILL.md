@@ -28,6 +28,8 @@ helm unittest .
 helm unittest . -u
 ```
 
+When you set values in asserts, don't use dot-notation keys but use nested YAML structures.
+
 ### Adding new tests
 
 Ask what should be tested and what type is preferred:

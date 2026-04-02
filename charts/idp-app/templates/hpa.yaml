@@ -18,36 +18,14 @@ spec:
   maxReplicas: {{ required "autoscaling.maxReplicas required" $.Values.autoscaling.maxReplicas }}
 
   behavior:
-    {{- if $.Values.autoscaling.behavior }}
-    {{- toYaml $.Values.autoscaling.behavior | nindent 4 }}
-    {{- else }}
-    {{- if eq $.Values.autoscaling.scaleDown.preset "Lean" }}
+    {{- $presets := (((($.Values.global).idpAppConfig).defaults).autoscaling).presets | default dict }}
+    {{- with include "idp-app.hpaScaleDir" (list ($.Values.autoscaling.scaleDown | default dict) ($presets.scaleDown | default dict) "scaleDown") }}
     scaleDown:
-      stabilizationWindowSeconds: {{ default 600 $.Values.autoscaling.scaleDown.stabilizationWindowSeconds }}
-      policies:
-        - type: Percent
-          value: 5
-          periodSeconds: 60
-    {{- else if eq $.Values.autoscaling.scaleDown.preset "Disabled" }}
-    scaleDown:
-      selectPolicy: Disabled
-    {{- else }}
-    {{- fail "autoscaling.scaleDown.preset not supported" }}
+      {{- . | nindent 6 }}
     {{- end }}
-    {{- if eq $.Values.autoscaling.scaleUp.preset "Aggressive" }}
+    {{- with include "idp-app.hpaScaleDir" (list ($.Values.autoscaling.scaleUp | default dict) ($presets.scaleUp | default dict) "scaleUp") }}
     scaleUp:
-      stabilizationWindowSeconds: 0
-      policies:
-        - type: Percent
-          value: 5
-          periodSeconds: 60
-        - type: Pods
-          value: 1
-          periodSeconds: 60
-      selectPolicy: Max
-    {{- else }}
-    {{- fail "autoscaling.scaleUp.preset not supported" }}
-    {{- end }}
+      {{- . | nindent 6 }}
     {{- end }}
 
   metrics:

@@ -93,6 +93,28 @@ global:
           # https://github.com/external-secrets/external-secrets/pull/4086
           # https://github.com/external-secrets/external-secrets/issues/3979
           refreshInterval: "99999h"
+      autoscaling:
+        presets:
+          scaleDown:
+            Lean:
+              stabilizationWindowSeconds: 600
+              policies:
+                - type: Percent
+                  value: 5
+                  periodSeconds: 60
+            Disabled:
+              selectPolicy: Disabled
+          scaleUp:
+            Aggressive:
+              stabilizationWindowSeconds: 0
+              policies:
+                - type: Percent
+                  value: 5
+                  periodSeconds: 60
+                - type: Pods
+                  value: 1
+                  periodSeconds: 60
+              selectPolicy: Max
 
 appName: app-name
 appVersion: "{{ .Values.global.appVersion }}"

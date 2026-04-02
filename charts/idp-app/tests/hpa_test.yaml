@@ -65,7 +65,19 @@ tests:
           content:
             selectPolicy: Disabled
 
-  - it: can customize scaleDown.stabilizationWindowSeconds
+  - it: when scaleDown preset is unknown, fail
+    values:
+      - values/deployment.yaml
+      - values/autoscaling.yaml
+    set:
+      autoscaling:
+        scaleDown:
+          preset: Unknown
+    asserts:
+      - failedTemplate:
+          errorMessage: "autoscaling.scaleDown.preset 'Unknown' not defined in global.idpAppConfig.defaults.autoscaling.presets.scaleDown"
+
+  - it: can override scaleDown stabilizationWindowSeconds on top of Lean preset
     values:
       - values/deployment.yaml
       - values/autoscaling.yaml
@@ -77,6 +89,13 @@ tests:
       - equal:
           path: spec.behavior.scaleDown.stabilizationWindowSeconds
           value: 1200
+      - isSubset:
+          path: spec.behavior.scaleDown
+          content:
+            policies:
+              - type: Percent
+                value: 5
+                periodSeconds: 60
 
   - it: when deployment.kind is StatefulSet
     values:
@@ -88,26 +107,19 @@ tests:
           path: spec.scaleTargetRef.kind
           value: StatefulSet
 
-  - it: when custom behavior is provided
+  - it: when scaleDown and scaleUp set directly without preset
     values:
       - values/deployment.yaml
       - values/autoscaling.yaml
     set:
       autoscaling:
-        behavior:
-          scaleDown:
-            stabilizationWindowSeconds: 300
-            policies:
-              - type: Pods
-                value: 2
-                periodSeconds: 60
-          scaleUp:
-            stabilizationWindowSeconds: 30
-            policies:
-              - type: Percent
-                value: 100
-                periodSeconds: 15
-            selectPolicy: Max
+        scaleDown:
+          preset: ""
+          stabilizationWindowSeconds: 300
+        scaleUp:
+          preset: ""
+          stabilizationWindowSeconds: 30
+          selectPolicy: Max
     asserts:
       - equal:
           path: spec.behavior.scaleDown.stabilizationWindowSeconds

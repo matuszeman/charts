@@ -18,6 +18,29 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
+{{/*
+Resolve HPA scale direction behavior.
+Args: (list $vals $presetDefs $direction)
+  $vals       - autoscaling.scaleDown or autoscaling.scaleUp dict
+  $presetDefs - global.idpAppConfig.defaults.autoscaling.presets.scaleDown|scaleUp dict
+  $direction  - "scaleDown" or "scaleUp" (used in error messages only)
+Returns YAML for the resolved behavior, or empty string if nothing to render.
+*/}}
+{{- define "idp-app.hpaScaleDir" -}}
+{{- $vals := index . 0 -}}
+{{- $presetDefs := index . 1 -}}
+{{- $direction := index . 2 -}}
+{{- $overrides := omit $vals "preset" -}}
+{{- $preset := $vals.preset -}}
+{{- if $preset -}}
+{{- $def := index $presetDefs $preset -}}
+{{- if not $def -}}{{ fail (printf "autoscaling.%s.preset '%s' not defined in global.idpAppConfig.defaults.autoscaling.presets.%s" $direction $preset $direction) }}{{- end -}}
+{{- toYaml (mustMergeOverwrite (deepCopy $def) $overrides) -}}
+{{- else if $overrides -}}
+{{- toYaml $overrides -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "idp-app.deploymentName" -}}
 {{- $ := index . 0 -}}
 {{- $deploymentKey := index . 1 -}}

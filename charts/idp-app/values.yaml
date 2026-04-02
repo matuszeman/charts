@@ -85,6 +85,29 @@
 #         annotations: {}
 #         externalSecret:
 #           refreshInterval: "99999h"
+#       # Named HPA scaling behavior presets — referenced by autoscaling.scaleDown.preset / autoscaling.scaleUp.preset
+#       autoscaling:
+#         presets:
+#           scaleDown:
+#             Lean:
+#               stabilizationWindowSeconds: 600
+#               policies:
+#                 - type: Percent
+#                   value: 5
+#                   periodSeconds: 60
+#             Disabled:
+#               selectPolicy: Disabled
+#           scaleUp:
+#             Aggressive:
+#               stabilizationWindowSeconds: 0
+#               policies:
+#                 - type: Percent
+#                   value: 5
+#                   periodSeconds: 60
+#                 - type: Pods
+#                   value: 1
+#                   periodSeconds: 60
+#               selectPolicy: Max
 
 # ---------------------------------------------------------------------------
 # Core identity
@@ -626,31 +649,23 @@ autoscaling:
   # targetMemoryUtilizationPercentage: 80
 
   scaleDown:
-    # preset — ScaleDown behaviour preset.
-    # Lean: scale down slowly (reduces flapping); Disabled: never scale down automatically.
+    # preset — Named ScaleDown behaviour preset defined in global.idpAppConfig.defaults.autoscaling.presets.scaleDown.
+    # Any additional fields (e.g. stabilizationWindowSeconds) are merged on top of the preset.
+    # Omit preset to supply the full scaleDown behaviour directly.
+    # Example with preset override:
+    #   preset: Lean
+    #   stabilizationWindowSeconds: 1200
+    # Example without preset (raw behaviour):
+    #   stabilizationWindowSeconds: 300
+    #   policies:
+    #     - type: Pods
+    #       value: 2
+    #       periodSeconds: 60
     preset: Lean
-    #stabilizationWindowSeconds: 1200
   scaleUp:
-    # preset — ScaleUp behaviour preset.
-    # Aggressive: scale up quickly on load spikes.
+    # preset — Named ScaleUp behaviour preset defined in global.idpAppConfig.defaults.autoscaling.presets.scaleUp.
+    # Omit preset to supply the full scaleUp behaviour directly.
     preset: Aggressive
-
-  # behavior — Override the entire HPA behavior block. When set, scaleDown and scaleUp presets are ignored.
-  # Example:
-  # behavior:
-  #   scaleDown:
-  #     stabilizationWindowSeconds: 300
-  #     policies:
-  #       - type: Pods
-  #         value: 2
-  #         periodSeconds: 60
-  #   scaleUp:
-  #     stabilizationWindowSeconds: 30
-  #     policies:
-  #       - type: Percent
-  #         value: 100
-  #         periodSeconds: 15
-  #     selectPolicy: Max
 
 # ---------------------------------------------------------------------------
 # Service Account
