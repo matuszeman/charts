@@ -1,2 +1,1 @@
-{{- $ctx := set (mustDeepCopy . ) "Values" .Values.app }}
-{{ include "idp-app.configFilesFromFolder" (list $ctx "configs") }}
+{{- include "idp-app.configsFromFolders" (list . .Values.app) }}

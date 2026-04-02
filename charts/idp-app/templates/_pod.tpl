@@ -65,14 +65,14 @@ spec:
         {{- with $v.defaultMode }}
         defaultMode: {{ . }}
         {{- end }}
-      {{- else if or $v.fromConfigMap $v.content }}
+      {{- else if or $v.fromConfigMap $v.fromFolder $v.content }}
       configMap:
         name: {{ include "idp-app.configName" (list $ $configKey) }}
         {{- with $v.defaultMode }}
         defaultMode: {{ . }}
         {{- end }}
       {{- else }}
-      {{- required ( printf "configs.%s does not specify secret, fromConfigMap, fromSecret, awsSecret, sealedSecret nor content" $configKey ) nil }}
+      {{- required ( printf "configs.%s does not specify secret, fromConfigMap, fromFolder, fromSecret, awsSecret, sealedSecret nor content" $configKey ) nil }}
       {{- end }}
     {{- end }}
     {{- end }}

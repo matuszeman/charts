@@ -6,7 +6,7 @@
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) }}
 {{- $mergedAnnotations := merge (dict) $defaultsConfigsAnnotations (default $configSpec.annotations dict) }}
-{{- if or .fromSecret .fromConfigMap }}
+{{- if or .fromSecret .fromConfigMap .fromFolder }}
 {{- else if (kindIs "map" .secret) }}
 ---
 apiVersion: v1
