@@ -1,0 +1,26 @@
+global:
+  cluster: test
+
+app:
+  appName: my-app
+  appVersion: 1.0.0
+
+  deployment:
+    enabled: true
+
+  configs:
+    app:
+      #fromConfigMap: "{{ .Release.Name }}-config-app"
+      fromFolder: configs
+
+  containers:
+    app:
+      image: my-app
+      imageTag: 1.0.0
+      containerPort: 8080
+      resources:
+        requests:
+          cpu: 100m
+          memory: 64Mi
+      configDirs:
+        app: /etc/config/app
