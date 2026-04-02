@@ -88,3 +88,34 @@ tests:
           path: spec.scaleTargetRef.kind
           value: StatefulSet
 
+  - it: when custom behavior is provided
+    values:
+      - values/deployment.yaml
+      - values/autoscaling.yaml
+    set:
+      autoscaling:
+        behavior:
+          scaleDown:
+            stabilizationWindowSeconds: 300
+            policies:
+              - type: Pods
+                value: 2
+                periodSeconds: 60
+          scaleUp:
+            stabilizationWindowSeconds: 30
+            policies:
+              - type: Percent
+                value: 100
+                periodSeconds: 15
+            selectPolicy: Max
+    asserts:
+      - equal:
+          path: spec.behavior.scaleDown.stabilizationWindowSeconds
+          value: 300
+      - equal:
+          path: spec.behavior.scaleUp.stabilizationWindowSeconds
+          value: 30
+      - equal:
+          path: spec.behavior.scaleUp.selectPolicy
+          value: Max
+

@@ -18,6 +18,9 @@ spec:
   maxReplicas: {{ required "autoscaling.maxReplicas required" $.Values.autoscaling.maxReplicas }}
 
   behavior:
+    {{- if $.Values.autoscaling.behavior }}
+    {{- toYaml $.Values.autoscaling.behavior | nindent 4 }}
+    {{- else }}
     {{- if eq $.Values.autoscaling.scaleDown.preset "Lean" }}
     scaleDown:
       stabilizationWindowSeconds: {{ default 600 $.Values.autoscaling.scaleDown.stabilizationWindowSeconds }}
@@ -44,6 +47,7 @@ spec:
       selectPolicy: Max
     {{- else }}
     {{- fail "autoscaling.scaleUp.preset not supported" }}
+    {{- end }}
     {{- end }}
 
   metrics:

@@ -1,6 +1,6 @@
 ---
 name: helm-chart-developer
-description: Knows how to implement, generate, render, verify, test helm chart templates, manage dependencies/subcharts and configure chart values. Use it when working on any helm chart related tasks.
+description: Use when user need work on helm chart related tasks, analyze, implement, generate, render, verify, test helm chart templates, manage dependencies/subcharts and configure chart values.
 ---
 
 # Verification / Testing
