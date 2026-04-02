@@ -1,51 +1,7 @@
 {{- if not $.Values.debug -}}
 {{- if $.Values.deployment.enabled }}
-{{- $this := $.Values.deployment }}
-{{- if not (has $this.kind (list "Deployment" "StatefulSet")) }}
-  {{- fail "deployment.kind must be Deployment or StatefulSet" }}
-{{- end }}
-{{- $deployments := default (dict "" $this) $this.multi }}
-{{- range $deploymentKey, $deployment := $deployments }}
-{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
-{{- if $deployment.staticIps }}
-{{- else }}
-apiVersion: apps/v1
-kind: {{ $this.kind }}
-metadata:
-  name: {{ $deploymentName }}
-  labels:
-    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
-  {{- with $this.annotations }}
-  annotations:
-    {{- toYaml $this.annotations | nindent 4 }}
-  {{- end }}
-spec:
-  {{- if not $.Values.autoscaling.enabled }}
-  replicas: {{ $.Values.replicaCount }}
-  {{- end }}
-  {{- with $this.strategy }}
-  {{- if not (has .type (list "RollingUpdate" "Recreate")) }}
-    {{- fail "deployment.strategy.type must be RollingUpdate or Recreate" }}
-  {{- end }}
-  strategy:
-    type: {{ .type }}
-    {{- if eq .type "RollingUpdate" }}
-    {{- if .rollingUpdate }}
-    rollingUpdate:
-      {{- toYaml .rollingUpdate | nindent 6 }}
-    {{- end }}
-    {{- else }}
-    rollingUpdate: null
-    {{- end }}
-  {{- end }}
-  selector:
-    matchLabels:
-      {{- include "idp-app.selectorLabels" (list $ $deploymentKey) | nindent 6 }}
-  revisionHistoryLimit: {{ $this.revisionHistoryLimit }}
-  template:
-    {{- include "idp-app.podTemplate" (list $ $deploymentKey $deployment ) | nindent 4 }}
----
-{{- end }}
+{{- if not $.Values.deployment.managedByUmbrella }}
+{{- include "idp-app.deployments" (list $ $.Values) }}
 {{- end }}
 {{- end }}
 {{- end }}

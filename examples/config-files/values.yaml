@@ -7,10 +7,12 @@ app:
 
   deployment:
     enabled: true
+    managedByUmbrella: true
 
   configs:
     cm:
       fromFolder: configs/cm
+      restartPodOnUpdate: PodAnnotation
     secret:
       secret: {}
       fromFolder: configs/secret

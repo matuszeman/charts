@@ -11,10 +11,9 @@ Arguments:
   index 0 — umbrella chart root context (provides .Files for glob/read)
   index 1 — idp-app dependency values (e.g. .Values.app or .Values.myalias)
 
-restartPodOnUpdate: automatic hash computation from file content is not available here
-because the content dict only exists at umbrella render time, not in idp-app's Values.
-Set valuesHash manually (e.g. in CI: sha256sum of the folder) to enable either strategy —
-the same pattern as fromConfigMap/fromSecret.
+restartPodOnUpdate: when restartPodOnUpdate is set on a fromFolder config, the hash is
+computed automatically from file contents here — enabling NameSuffix ConfigMap naming.
+For PodAnnotation pod restarts, pair with idp-app.deployments in the umbrella chart.
 */}}
 {{- define "idp-app.configsFromFolders" -}}
 {{- $root := index . 0 -}}
@@ -25,6 +24,12 @@ the same pattern as fromConfigMap/fromSecret.
 {{- $content := dict -}}
 {{- range $path, $_ := $root.Files.Glob (printf "%s/*" $configSpec.fromFolder) -}}
 {{- $content = set $content (base $path) ($root.Files.Get $path) -}}
+{{- end -}}
+{{- /* Inject computed hash for restartPodOnUpdate (NameSuffix requires hash in Values for configName) */ -}}
+{{- if not $configSpec.valuesHash -}}
+{{- if or (eq (toString $configSpec.restartPodOnUpdate) "true") (eq (toString $configSpec.restartPodOnUpdate) "PodAnnotation") (eq (toString $configSpec.restartPodOnUpdate) "NameSuffix") -}}
+{{- $_ := set (index $values.configs $configKey) "valuesHash" (toJson $content | sha1sum) -}}
+{{- end -}}
 {{- end -}}
 {{- $mergedSpec := merge (mustDeepCopy $configSpec) (dict "content" $content) }}
 {{ include "idp-app.renderConfigFromContent" (list $ctx $configKey $mergedSpec) }}
