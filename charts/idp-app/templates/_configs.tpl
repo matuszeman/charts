@@ -1,3 +1,30 @@
+{{/*
+Inject computed valuesHash for fromFolder configs that have restartPodOnUpdate set.
+File contents are read from $root.Files (umbrella chart context). When called from a
+subchart directly, .Files contains no umbrella files so no hashes are injected.
+Modifies $values.configs[key].valuesHash in-place; returns empty string.
+
+Arguments: (list $root $values)
+  $root   — root context with .Files access
+  $values — idp-app values
+*/}}
+{{- define "idp-app.injectFromFolderHashes" -}}
+{{- $root := index . 0 -}}
+{{- $values := index . 1 -}}
+{{- range $configKey, $configSpec := $values.configs -}}
+{{- if and $configSpec.fromFolder (not $configSpec.valuesHash) -}}
+{{- if or (eq (toString $configSpec.restartPodOnUpdate) "true") (eq (toString $configSpec.restartPodOnUpdate) "PodAnnotation") (eq (toString $configSpec.restartPodOnUpdate) "NameSuffix") -}}
+{{- $content := dict -}}
+{{- range $path, $_ := $root.Files.Glob (printf "%s/*" $configSpec.fromFolder) -}}
+{{- $content = set $content (base $path) ($root.Files.Get $path) -}}
+{{- end -}}
+{{- if $content -}}
+{{- $_ := set (index $values.configs $configKey) "valuesHash" (toJson $content | sha1sum) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
 {{- define "idp-app.configName" -}}
 {{- $ := index . 0 -}}
 {{- $configKey := index . 1 -}}

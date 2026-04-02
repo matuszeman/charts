@@ -17,20 +17,7 @@ skipped (same behaviour as before).
 {{- define "idp-app.deployments" -}}
 {{- $root := index . 0 -}}
 {{- $values := index . 1 -}}
-{{- /* Inject file-content hashes for fromFolder configs with restartPodOnUpdate */ -}}
-{{- range $configKey, $configSpec := $values.configs -}}
-{{- if and $configSpec.fromFolder (not $configSpec.valuesHash) -}}
-{{- if or (eq (toString $configSpec.restartPodOnUpdate) "true") (eq (toString $configSpec.restartPodOnUpdate) "PodAnnotation") (eq (toString $configSpec.restartPodOnUpdate) "NameSuffix") -}}
-{{- $content := dict -}}
-{{- range $path, $_ := $root.Files.Glob (printf "%s/*" $configSpec.fromFolder) -}}
-{{- $content = set $content (base $path) ($root.Files.Get $path) -}}
-{{- end -}}
-{{- if $content -}}
-{{- $_ := set (index $values.configs $configKey) "valuesHash" (toJson $content | sha1sum) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
+{{- include "idp-app.injectFromFolderHashes" (list $root $values) -}}
 {{- $ctx := set (mustDeepCopy $root) "Values" $values -}}
 {{- $this := $values.deployment -}}
 {{- if not (has $this.kind (list "Deployment" "StatefulSet")) }}
