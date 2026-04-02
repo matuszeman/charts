@@ -6,39 +6,9 @@
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) }}
 {{- $mergedAnnotations := merge (dict) $defaultsConfigsAnnotations (default $configSpec.annotations dict) }}
-{{- if or .fromSecret .fromConfigMap }}
+{{- if or .fromSecret .fromConfigMap .fromFolder }}
 {{- else if (kindIs "map" .secret) }}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ include "idp-app.configName" (list $ $configKey) }}
-  labels:
-    {{- toYaml $mergedLabels | nindent 4 }}
-  {{- with $mergedAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-type: {{ .secret.type | default "Opaque" }}
-data:
-{{- range $contentKey, $v := $configSpec.content }}
-  {{- $rawValue := $v | required (printf "configs.%s.secret.%s required" $configKey $contentKey ) }}
-  {{- $strValue := "" }}
-  {{- if kindIs "map" $rawValue }}
-    {{- $strValue = $rawValue | toYaml }}
-  {{- else }}
-    {{- $strValue = $rawValue | toString }}
-  {{- end }}
-  {{- $val := "" }}
-  {{- if $configSpec.templated }}
-  {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
-  {{- $val = tpl $strValue $tplCtx }}
-  {{- else }}
-  {{- $val = $strValue }}
-  {{- end }}
-  {{ $contentKey }}:
-    {{- toYaml ($val | b64enc ) | nindent 4 }}
-{{- end }}
+{{ include "idp-app.renderConfigFromContent" (list $ $configKey $configSpec) }}
 {{- else if .sealedSecret }}
 {{- with .sealedSecret }}
 ---
@@ -108,37 +78,8 @@ spec:
         {{- end }}
 {{- end }}
 {{- else }}
-{{- $_ := required (printf "configs.%s.content required (or set .fromSecret, .fromConfigMap)" $configKey) .content }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "idp-app.configName" (list $ $configKey) }}
-  labels:
-    {{- toYaml $mergedLabels | nindent 4 }}
-  {{- with $mergedAnnotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-data:
-{{- range $contentKey, $v := $configSpec.content }}
-  {{- $rawValue := $v | required (printf "configs.%s.content.%s required" $configKey $contentKey ) }}
-  {{- $strValue := "" }}
-  {{- if kindIs "map" $rawValue }}
-    {{- $strValue = $rawValue | toYaml }}
-  {{- else }}
-    {{- $strValue = $rawValue | toString }}
-  {{- end }}
-  {{- $val := "" }}
-  {{- if $configSpec.templated }}
-  {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
-  {{- $val = tpl $strValue $tplCtx }}
-  {{- else }}
-  {{- $val = $strValue }}
-  {{- end }}
-  {{ $contentKey }}:
-    {{- toYaml $val | nindent 4 }}
-{{- end }}
+{{- $_ := required (printf "configs.%s.content required (or set .fromSecret, .fromConfigMap, .fromFolder)" $configKey) .content }}
+{{ include "idp-app.renderConfigFromContent" (list $ $configKey $configSpec) }}
 {{- end }}
 {{- end }}
 {{- if $secretStore }}

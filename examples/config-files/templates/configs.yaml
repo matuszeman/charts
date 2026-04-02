@@ -1,0 +1,1 @@
+{{- include "idp-app.configsFromFolders" (list . .Values.app) }}

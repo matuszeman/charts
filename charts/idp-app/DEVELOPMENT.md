@@ -9,11 +9,15 @@ The chart is composed of composable named templates in `templates/_*.tpl`:
 - `_helpers.tpl` — Name/label helpers; `idp-app.clusterConfig` and `idp-app.clusterConfigMapValue` resolve cluster-specific values from `global.idpAppConfig.clusters`
 - `_pod.tpl` — `idp-app.podTemplate` builds the pod spec; assembles volumes from `configs` and `volumes`, applies `nodePool`, `topologySpreadConstraints`, etc.
 - `_container.tpl` — `idp-app.container` builds individual container specs; resolves image repos from `global.idpAppConfig.imageRepositories`, handles `configDirs`/`configFiles`/`volumeMounts`/`volumeFiles` and `env` config references (auto-detects ConfigMap vs Secret type)
-- `_configs.tpl` — Four helpers:
+- `_configs.tpl` — Six helpers:
+  - `idp-app.injectFromFolderHashes` — iterates all `fromFolder` configs that have `restartPodOnUpdate` set and no manual `valuesHash`; reads file contents via `$root.Files.Glob`/`Files.Get` and writes the computed SHA1 hash directly into `$values.configs[key].valuesHash` (in-place mutation); takes `(list $root $values)`; returns empty string. This is the single source of truth for folder hash injection — called by both `idp-app.configsFromFolders` and `idp-app.deployments`.
   - `idp-app.configName` — computes the final resource name (appends hash suffix for `NameSuffix` strategy)
   - `idp-app.configHash` — computes a content hash from `content`, `awsSecret.arn`+`versionId`, `sealedSecret.encryptedData`, or manual `valuesHash`
   - `idp-app.configsPodAnnotations` — emits pod annotations for `PodAnnotation` restart strategy
+  - `idp-app.renderConfigFromContent` — unified ConfigMap/Secret renderer shared by `configs.yaml` and `_config-files.tpl`; takes `(list $ $configKey $configSpec)` with a populated `content` map
   - `idp-app.isConfigUsedInContainersVolumeMounts` — checks whether a config key is referenced by any container's `configDirs`/`configFiles` (controls whether a volume is emitted in the pod spec)
+- `_config-files.tpl` — `idp-app.configsFromFolders` — umbrella-chart entry point for `fromFolder` configs; calls `idp-app.injectFromFolderHashes` first (so `NameSuffix` ConfigMap names include the hash), then iterates configs with `fromFolder` set, reads each file via `$root.Files.Glob`/`Files.Get` and calls `idp-app.renderConfigFromContent`
+- `_deployment.tpl` — `idp-app.deployments` — umbrella-chart entry point for Deployment/StatefulSet rendering; takes `(list $root $values)`; calls `idp-app.injectFromFolderHashes` to populate folder hashes before building `$ctx` and rendering the manifests. `deployment.yaml` delegates to this template (passing `(list $ $.Values)`) and is suppressed when `deployment.managedByUmbrella: true`.
 
 # Key Values Patterns
 
@@ -24,7 +28,7 @@ The chart is composed of composable named templates in `templates/_*.tpl`:
 
 **`imagePullPolicy` precedence** — `global.idpAppConfig.defaults.imagePullPolicy` takes priority over the per-container `imagePullPolicy` field. The global default is `IfNotPresent` when not set. To use a different policy on a specific container, do not set the global default.
 
-**`configs`** — manages ConfigMaps/Secrets. Sources: `content` (inline), `fromConfigMap`/`fromSecret` (existing resources), `awsSecret` (External Secrets Operator), `sealedSecret`. Referenced in containers via:
+**`configs`** — manages ConfigMaps/Secrets. Sources: `content` (inline), `fromFolder` (files from umbrella chart folder), `fromConfigMap`/`fromSecret` (existing resources), `awsSecret` (External Secrets Operator), `sealedSecret`. Referenced in containers via:
 - `configDirs` — mount whole config as a directory
 - `configFiles` — mount individual files from a config
 - `env.<VAR>.config` — inject a single key as an environment variable; the type (ConfigMap or Secret) is resolved automatically
@@ -37,8 +41,31 @@ When any config uses `awsSecret`, a `SecretStore` resource is automatically crea
 - `PodAnnotation` — adds a `config-hash-<key>` annotation to the pod template; triggers rolling restart when content changes
 - `NameSuffix` — appends a short content hash to the ConfigMap/Secret name; any name change forces Kubernetes to re-mount and restart pods
 - `fromConfigMap`/`fromSecret` sources require a manual `valuesHash` for either strategy to work
+**`fromFolder` (umbrella charts)** — reads all files from a folder in the parent chart and creates a ConfigMap (or Secret) with each filename as a data key. Because `Files.Glob`/`Files.Get` can only access the files of the chart that owns the template, the umbrella must have a `templates/configs.yaml` containing a single line:
+```
+{{- include "idp-app.configsFromFolders" (list . .Values.<alias>) }}
+```
+The first argument is the umbrella root context (provides `.Files`); the second is the idp-app dependency's values. `idp-app.configsFromFolders` builds the correct idp-app context (`set (mustDeepCopy $root) "Values" $values`) so all idp-app helpers (`idp-app.fullname`, `idp-app.labels`, etc.) resolve correctly while `.Files` still reads from the umbrella chart. Supports all `content`-based features: `secret: {}`, `templated`, `labels`, `annotations`.
+
+**`restartPodOnUpdate` with `fromFolder`** — automatic hash computation requires the umbrella chart to also render the Deployment via `idp-app.deployments`. The reason is Helm's rendering order: subchart templates render with a separate copy of values before the parent chart's templates run, so hashes computed in the parent's `configs.yaml` cannot reach the subchart's already-rendered `deployment.yaml`.
+
+The solution is to move Deployment rendering into the umbrella chart's context, where `.Files` is accessible. Add `templates/deployments.yaml` to the umbrella chart:
+```
+{{- include "idp-app.deployments" (list . .Values.<alias>) }}
+```
+And set `deployment.managedByUmbrella: true` in the idp-app values so the subchart's own `deployment.yaml` is suppressed (PDB, HPA, and Service resources are unaffected — they still use `deployment.enabled`). See [`examples/config-files`](../../examples/config-files) for a complete working example.
+
+`idp-app.deployments` calls `idp-app.injectFromFolderHashes` before rendering, which reads folder file contents via `$root.Files` and writes hashes into `$values.configs[key].valuesHash`. Both `PodAnnotation` (pod template annotation) and `NameSuffix` (resource name hash suffix) strategies then work automatically — no CI step required.
+
+Manual `valuesHash` still works and takes precedence over the auto-computed hash, for cases where `.Files` is unavailable (e.g. direct subchart usage without an umbrella). In CI:
+```sh
+hash=$(find configs/app -type f | sort | xargs sha256sum | sha256sum | cut -c1-8)
+helm upgrade ... --set app.configs.app-config.valuesHash=$hash
+```
 
 **`volumes`** — mounts arbitrary volumes. PVCs without `claimName` are auto-created by `pvc.yaml` (one per Deployment in `deployment.multi`). PVCs with `claimName` reference an existing PVC.
+
+**`deployment.managedByUmbrella`** — when `true`, suppresses the built-in `deployment.yaml` rendering so the umbrella chart can render the Deployment via `idp-app.deployments` without duplicates. All other resources that depend on `deployment.enabled` (PDB, HPA, headless Service) are unaffected.
 
 **`deployment.kind`** — `Deployment` (default) or `StatefulSet`. StatefulSet is intended for workloads that need stable network identities or ordered rolling updates. Pair with `headlessService` for DNS-based pod discovery (`pod-0.<svc>`, `pod-1.<svc>`, …).
 

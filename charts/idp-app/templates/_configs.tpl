@@ -1,3 +1,30 @@
+{{/*
+Inject computed valuesHash for fromFolder configs that have restartPodOnUpdate set.
+File contents are read from $root.Files (umbrella chart context). When called from a
+subchart directly, .Files contains no umbrella files so no hashes are injected.
+Modifies $values.configs[key].valuesHash in-place; returns empty string.
+
+Arguments: (list $root $values)
+  $root   — root context with .Files access
+  $values — idp-app values
+*/}}
+{{- define "idp-app.injectFromFolderHashes" -}}
+{{- $root := index . 0 -}}
+{{- $values := index . 1 -}}
+{{- range $configKey, $configSpec := $values.configs -}}
+{{- if and $configSpec.fromFolder (not $configSpec.valuesHash) -}}
+{{- if or (eq (toString $configSpec.restartPodOnUpdate) "true") (eq (toString $configSpec.restartPodOnUpdate) "PodAnnotation") (eq (toString $configSpec.restartPodOnUpdate) "NameSuffix") -}}
+{{- $content := dict -}}
+{{- range $path, $_ := $root.Files.Glob (printf "%s/*" $configSpec.fromFolder) -}}
+{{- $content = set $content (base $path) ($root.Files.Get $path) -}}
+{{- end -}}
+{{- if $content -}}
+{{- $_ := set (index $values.configs $configKey) "valuesHash" (toJson $content | sha1sum) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end }}
 {{- define "idp-app.configName" -}}
 {{- $ := index . 0 -}}
 {{- $configKey := index . 1 -}}
@@ -36,6 +63,58 @@
 config-hash-{{ $configKey }}: {{ $hash | quote }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- end }}
+{{/*
+Render a ConfigMap or Secret from inline content.
+Shared by configs.yaml (inline content/secret configs) and _config-files.tpl (fromFolder configs).
+
+Arguments: (list $ $configKey $configSpec)
+  $         — root context (.Values must be idp-app values)
+  $configKey — config map key
+  $configSpec — config spec with .content map; optionally .secret {}, .labels, .annotations,
+                .templated, and any other standard config options
+*/}}
+{{- define "idp-app.renderConfigFromContent" -}}
+{{- $ := index . 0 -}}
+{{- $configKey := index . 1 -}}
+{{- $configSpec := index . 2 -}}
+{{- $defaultsConfigsAnnotations := (((($.Values.global).idpAppConfig).defaults).configs).annotations | default (dict) -}}
+{{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) -}}
+{{- $mergedAnnotations := merge (dict) $defaultsConfigsAnnotations (default $configSpec.annotations dict) -}}
+{{- $isSecret := kindIs "map" $configSpec.secret -}}
+---
+apiVersion: v1
+kind: {{ $isSecret | ternary "Secret" "ConfigMap" }}
+metadata:
+  name: {{ include "idp-app.configName" (list $ $configKey) }}
+  labels:
+    {{- toYaml $mergedLabels | nindent 4 }}
+  {{- with $mergedAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- if $isSecret }}
+type: {{ $configSpec.secret.type | default "Opaque" }}
+{{- end }}
+data:
+{{- range $contentKey, $v := $configSpec.content }}
+  {{- $rawValue := $v | required (printf "configs.%s.content.%s required" $configKey $contentKey) }}
+  {{- $strValue := "" }}
+  {{- if kindIs "map" $rawValue }}
+    {{- $strValue = $rawValue | toYaml }}
+  {{- else }}
+    {{- $strValue = $rawValue | toString }}
+  {{- end }}
+  {{- $val := "" }}
+  {{- if $configSpec.templated }}
+  {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
+  {{- $val = tpl $strValue $tplCtx }}
+  {{- else }}
+  {{- $val = $strValue }}
+  {{- end }}
+  {{ $contentKey }}:
+    {{- toYaml ($isSecret | ternary ($val | b64enc) $val) | nindent 4 }}
 {{- end }}
 {{- end }}
 {{- define "idp-app.isConfigUsedInContainersVolumeMounts"}}

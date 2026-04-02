@@ -1,0 +1,31 @@
+global:
+  cluster: test
+
+app:
+  appName: my-app
+  appVersion: 1.0.0
+
+  deployment:
+    enabled: true
+    managedByUmbrella: true
+
+  configs:
+    cm:
+      fromFolder: configs/cm
+      restartPodOnUpdate: PodAnnotation
+    secret:
+      secret: {}
+      fromFolder: configs/secret
+
+  containers:
+    app:
+      image: my-app
+      imageTag: 1.0.0
+      containerPort: 8080
+      resources:
+        requests:
+          cpu: 100m
+          memory: 64Mi
+      configDirs:
+        cm: /config/cm
+        secret: /config/secret

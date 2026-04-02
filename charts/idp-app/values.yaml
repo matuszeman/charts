@@ -385,6 +385,22 @@ configs: {}
 #     # valuesHash: abc123              # Provide a hash for restartPodOnUpdate to work
 #     # restartPodOnUpdate: NameSuffix  # Appends hash to the reference name
 #
+#   # Create a ConfigMap from files in a folder of the umbrella chart.
+#   # The umbrella chart's templates/configs.yaml must contain a single line:
+#   #   {{- include "idp-app.configsFromFolders" (list . .Values.<alias>) }}
+#   # All files in the folder become data keys in a ConfigMap named <fullname>-config-<key>.
+#   # Supports: secret: {}, templated, labels, annotations.
+#   # See examples/config-files for a complete example.
+#   #
+#   # restartPodOnUpdate: supported automatically when using idp-app.deployments in the
+#   # umbrella chart — file content hash is computed from .Files at render time.
+#   # Without idp-app.deployments, set valuesHash manually (e.g. from CI sha256sum).
+#   # See examples/config-files for the complete umbrella chart pattern.
+#   app-config:
+#     fromFolder: configs   # Folder path relative to umbrella chart root
+#     restartPodOnUpdate: PodAnnotation  # Auto-computed when using idp-app.deployments
+#     # valuesHash: abc123  # Manual override; takes precedence over auto-computed hash
+#
 #   # Reference an existing Secret — no new resource is created
 #   existing-secret:
 #     fromSecret: "{{ .Release.Name }}-my-secret"         # Supports tpl
@@ -434,6 +450,10 @@ deployment:
   # kind — Workload type. Deployment or StatefulSet.
   # Valid values: Deployment | StatefulSet
   kind: Deployment
+  # managedByUmbrella — Set to true when an umbrella chart renders the Deployment via
+  # {{- include "idp-app.deployments" (list . .Values.<alias>) }}
+  # Prevents duplicate Deployment output while keeping PDB/HPA/Service resources active.
+  managedByUmbrella: false
   annotations: {}
   # revisionHistoryLimit — Number of old ReplicaSets to retain.
   revisionHistoryLimit: 1

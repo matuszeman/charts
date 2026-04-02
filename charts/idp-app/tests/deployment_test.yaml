@@ -324,3 +324,13 @@ tests:
     asserts:
       - notExists:
           path: spec.template.spec.enableServiceLinks
+
+  - it: when deployment.managedByUmbrella is true, then no deployment is generated
+    values:
+      - values/deployment.yaml
+    set:
+      deployment:
+        managedByUmbrella: true
+    asserts:
+      - hasDocuments:
+          count: 0

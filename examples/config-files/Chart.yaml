@@ -1,0 +1,15 @@
+apiVersion: v2
+name: app
+type: application
+version: 1.0.0
+dependencies:
+  - name: idp-app-config
+    repository: 'file://../idp-app-config'
+    version: x.x.x
+    import-values:
+      - child: global
+        parent: global
+  - name: idp-app
+    alias: app
+    repository: 'file://../../charts/idp-app'
+    version: x.x.x
