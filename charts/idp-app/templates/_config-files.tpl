@@ -11,8 +11,10 @@ Arguments:
   index 0 — umbrella chart root context (provides .Files for glob/read)
   index 1 — idp-app dependency values (e.g. .Values.app or .Values.myalias)
 
-Note: restartPodOnUpdate is not supported for fromFolder configs because file content
-is not available in the idp-app values context used by pod template helpers.
+restartPodOnUpdate: automatic hash computation from file content is not available here
+because the content dict only exists at umbrella render time, not in idp-app's Values.
+Set valuesHash manually (e.g. in CI: sha256sum of the folder) to enable either strategy —
+the same pattern as fromConfigMap/fromSecret.
 */}}
 {{- define "idp-app.configsFromFolders" -}}
 {{- $root := index . 0 -}}

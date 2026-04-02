@@ -390,10 +390,15 @@ configs: {}
 #   #   {{- include "idp-app.configsFromFolders" (list . .Values.<alias>) }}
 #   # All files in the folder become data keys in a ConfigMap named <fullname>-config-<key>.
 #   # Supports: secret: {}, templated, labels, annotations.
-#   # Note: restartPodOnUpdate is not supported for fromFolder configs.
 #   # See examples/config-files for a complete example.
+#   #
+#   # restartPodOnUpdate: file content is not in idp-app Values so hash cannot be computed
+#   # automatically. Provide valuesHash manually (e.g. from CI) to enable PodAnnotation or
+#   # NameSuffix restart — same pattern as fromConfigMap/fromSecret.
 #   app-config:
 #     fromFolder: configs   # Folder path relative to umbrella chart root
+#     # valuesHash: abc123  # Set to sha256 of folder content in CI to enable restartPodOnUpdate
+#     # restartPodOnUpdate: PodAnnotation
 #
 #   # Reference an existing Secret — no new resource is created
 #   existing-secret:

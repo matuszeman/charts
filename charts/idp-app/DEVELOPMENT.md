@@ -39,13 +39,19 @@ When any config uses `awsSecret`, a `SecretStore` resource is automatically crea
 - `PodAnnotation` — adds a `config-hash-<key>` annotation to the pod template; triggers rolling restart when content changes
 - `NameSuffix` — appends a short content hash to the ConfigMap/Secret name; any name change forces Kubernetes to re-mount and restart pods
 - `fromConfigMap`/`fromSecret` sources require a manual `valuesHash` for either strategy to work
-- `fromFolder` does not support `restartPodOnUpdate` — file content is not present in idp-app's Values at pod template render time
-
 **`fromFolder` (umbrella charts)** — reads all files from a folder in the parent chart and creates a ConfigMap (or Secret) with each filename as a data key. Because `Files.Glob`/`Files.Get` can only access the files of the chart that owns the template, the umbrella must have a `templates/configs.yaml` containing a single line:
 ```
 {{- include "idp-app.configsFromFolders" (list . .Values.<alias>) }}
 ```
 The first argument is the umbrella root context (provides `.Files`); the second is the idp-app dependency's values. `idp-app.configsFromFolders` builds the correct idp-app context (`set (mustDeepCopy $root) "Values" $values`) so all idp-app helpers (`idp-app.fullname`, `idp-app.labels`, etc.) resolve correctly while `.Files` still reads from the umbrella chart. Supports all `content`-based features: `secret: {}`, `templated`, `labels`, `annotations`.
+
+**`restartPodOnUpdate` with `fromFolder`** — automatic hash computation is not available because the `content` dict is built inside `idp-app.configsFromFolders` at umbrella render time and is never written back into idp-app's Values. `idp-app.configHash` (used by both `PodAnnotation` and `NameSuffix` strategies) therefore returns empty and the strategies silently have no effect.
+
+Workaround: set `valuesHash` explicitly — the same pattern required for `fromConfigMap`/`fromSecret`. `configHash` checks `valuesHash` first, so once set, both strategies work normally. In CI, compute a hash of the folder content and pass it via `--set`:
+```sh
+hash=$(find configs/app -type f | sort | xargs sha256sum | sha256sum | cut -c1-8)
+helm upgrade ... --set app.configs.app-config.valuesHash=$hash
+```
 
 **`volumes`** — mounts arbitrary volumes. PVCs without `claimName` are auto-created by `pvc.yaml` (one per Deployment in `deployment.multi`). PVCs with `claimName` reference an existing PVC.
 

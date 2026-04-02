@@ -10,6 +10,29 @@ tests:
       - ../values-ci.yaml
     asserts:
       - matchSnapshot: {}
+  - it: when fromFolder is specified, then do not generate managed ConfigMap and generate deployment volume
+    values:
+      - values/deployment.yaml
+    set:
+      containers:
+        app:
+          configDirs:
+            folder-config: /app-config
+      configs:
+        folder-config:
+          fromFolder: configs/app
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: configs.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config-folder-config
+            configMap:
+              name: RELEASE-NAME-config-folder-config
+        template: deployment.yaml
+
   - it: when fromConfigMap is specified, then do not generate managed ConfigMap and generate deployment volume
     values:
       - values/deployment.yaml
