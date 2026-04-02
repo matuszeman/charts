@@ -35,8 +35,11 @@ should match snapshot:
                   cpu: 100m
                   memory: 64Mi
               volumeMounts:
-                - mountPath: /etc/config/app
-                  name: config-app
+                - mountPath: /config/cm
+                  name: config-cm
+                  readOnly: true
+                - mountPath: /config/secret
+                  name: config-secret
                   readOnly: true
           enableServiceLinks: false
           nodeSelector: null
@@ -59,8 +62,11 @@ should match snapshot:
               whenUnsatisfiable: ScheduleAnyway
           volumes:
             - configMap:
-                name: RELEASE-NAME-config-app
-              name: config-app
+                name: RELEASE-NAME-config-cm
+              name: config-cm
+            - name: config-secret
+              secret:
+                secretName: RELEASE-NAME-config-secret
   2: |
     apiVersion: policy/v1
     kind: PodDisruptionBudget
@@ -90,4 +96,17 @@ should match snapshot:
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.0.0
-      name: RELEASE-NAME-config-app
+      name: RELEASE-NAME-config-cm
+  4: |
+    apiVersion: v1
+    data:
+      mysecret: dmFsdWU=
+    kind: Secret
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+      name: RELEASE-NAME-config-secret
+    type: Opaque

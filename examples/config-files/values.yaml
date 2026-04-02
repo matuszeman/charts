@@ -9,9 +9,11 @@ app:
     enabled: true
 
   configs:
-    app:
-      #fromConfigMap: "{{ .Release.Name }}-config-app"
-      fromFolder: configs
+    cm:
+      fromFolder: configs/cm
+    secret:
+      secret: {}
+      fromFolder: configs/secret
 
   containers:
     app:
@@ -23,4 +25,5 @@ app:
           cpu: 100m
           memory: 64Mi
       configDirs:
-        app: /etc/config/app
+        cm: /config/cm
+        secret: /config/secret

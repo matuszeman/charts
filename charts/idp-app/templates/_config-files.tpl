@@ -24,7 +24,7 @@ is not available in the idp-app values context used by pod template helpers.
 {{- range $path, $_ := $root.Files.Glob (printf "%s/*" $configSpec.fromFolder) -}}
 {{- $content = set $content (base $path) ($root.Files.Get $path) -}}
 {{- end -}}
-{{- $mergedSpec := merge (mustDeepCopy $configSpec) (dict "content" $content) -}}
+{{- $mergedSpec := merge (mustDeepCopy $configSpec) (dict "content" $content) }}
 {{ include "idp-app.renderConfigFromContent" (list $ctx $configKey $mergedSpec) }}
 {{- end -}}
 {{- end -}}
