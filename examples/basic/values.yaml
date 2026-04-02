@@ -12,12 +12,24 @@ app:
     app:
       image: test
       imageTag: 1.0.0
+      containerPort: 8080
       resources:
         requests:
           cpu: 100m
           memory: 10Mi
       configDirs:
         app: /config/app
+
+  service:
+    enabled: true
+    port: 80
+
+  httpRoutes:
+    public:
+      enabled: true
+      gatewayName: http-public
+      host: test.example.com
+      path: /
 
   configs:
     app:

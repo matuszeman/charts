@@ -1,0 +1,28 @@
+suite: example - workload types
+values:
+  - values/minimum.yaml
+  - values/examples/workload-types.yaml
+tests:
+  - it: deployment
+    values:
+      - values/examples/workload-types-deployment.yaml
+    asserts:
+      - matchSnapshot: {}
+
+  - it: statefulset
+    values:
+      - values/examples/workload-types-statefulset.yaml
+    asserts:
+      - matchSnapshot: {}
+
+  - it: job
+    values:
+      - values/examples/workload-types-job.yaml
+    asserts:
+      - matchSnapshot: {}
+
+  - it: cronjob
+    values:
+      - values/examples/workload-types-cronjob.yaml
+    asserts:
+      - matchSnapshot: {}

@@ -1,0 +1,9 @@
+suite: example - comprehensive
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot
+    values:
+      - values/examples/comprehensive.yaml
+    asserts:
+      - matchSnapshot: {}

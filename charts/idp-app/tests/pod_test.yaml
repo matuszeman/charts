@@ -140,3 +140,38 @@ tests:
             fsGroup: 2000
             supplementalGroups: [ 4000 ]
 
+  - it: when idpAppConfig.defaults.securityContext is set, then use it as default pod security context
+    values:
+      - values/deployment.yaml
+    set:
+      global.idpAppConfig.defaults.securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+
+  - it: when both idpAppConfig.defaults.securityContext and .securityContext are set, local overrides default
+    values:
+      - values/deployment.yaml
+    set:
+      global.idpAppConfig.defaults.securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      securityContext:
+        runAsUser: 2000
+        fsGroup: 3000
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 2000
+            fsGroup: 3000
+

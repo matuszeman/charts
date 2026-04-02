@@ -1,0 +1,190 @@
+# Comprehensive idp-app example — shows most available features.
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-comprehensive_test.yaml.snap
+# The global section is typically set at the umbrella chart level and shared
+# across all app charts in a release.
+
+global:
+  cluster: production
+  idpAppConfig:
+    imageRepositories:
+      private: 123456.dkr.ecr.eu-central-1.amazonaws.com
+      public:  public.ecr.aws/123456
+    clusters:
+      production:
+        aws_region: eu-central-1
+        domains:
+          public:   example.com
+          internal: internal.example.com
+        nodePools:
+          workers:
+            nodeSelector:
+              role: worker
+            tolerations:
+              - key: role
+                operator: Equal
+                value: worker
+                effect: NoSchedule
+        httpGateways:
+          http-public:
+            controller: traefik
+            name: http-public
+            namespace: gateway
+        apps:
+          authelia:
+            traefik:
+              forwardAuthMiddleware:
+                address: http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+                trustForwardHeader: true
+                authResponseHeaders:
+                  - Remote-User
+                  - Remote-Groups
+    defaults:
+      imageRepository: private
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      ingress:
+        enabled: false
+        className: nginx-external
+        certManagerClusterIssuer: letsencrypt-prod
+        path: /
+      httpRoute:
+        enabled: false
+        pathType: PathPrefix
+        forwardAuth:
+          enabled: false
+      configs:
+        externalSecret:
+          refreshInterval: "99999h"
+
+# ---------------------------------------------------------------------------
+
+appName: my-app
+appVersion: "1.2.3"
+
+# ---------------------------------------------------------------------------
+# Workload
+# ---------------------------------------------------------------------------
+
+deployment:
+  enabled: true
+  kind: Deployment
+  revisionHistoryLimit: 2
+  # Uncomment to create multiple deployments from one release:
+  # multi:
+  #   api: {}
+  #   worker:
+  #     containers:
+  #       app:
+  #         command: ["worker"]
+
+service:
+  enabled: true
+  port: 80
+
+# ---------------------------------------------------------------------------
+# Containers
+# ---------------------------------------------------------------------------
+
+containers:
+  app:
+    image: my-app
+    imageTag: "1.2.3"
+    containerPort: 8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    env:
+      APP_ENV: production
+      DB_PASSWORD:
+        config:
+          name: app-secrets
+          key: db_password
+    configDirs:
+      app-config: /etc/app
+      app-secrets: /run/secrets
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: app
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: app
+
+# ---------------------------------------------------------------------------
+# Configs
+# ---------------------------------------------------------------------------
+
+configs:
+  app-config:
+    content:
+      config.yaml: |
+        server:
+          port: 8080
+    restartPodOnUpdate: PodAnnotation
+
+  app-secrets:
+    awsSecret:
+      arn: arn:aws:secretsmanager:eu-central-1:123456789012:secret:my-app/prod
+    restartPodOnUpdate: NameSuffix
+
+# ---------------------------------------------------------------------------
+# Routing
+# ---------------------------------------------------------------------------
+
+ingress:
+  enabled: true
+  domain: public
+  host: my-app         # results in my-app.example.com
+
+httpRoutes:
+  public:
+    enabled: true
+    gatewayName: http-public
+    domain: public
+    host: my-app
+    path: /
+
+# ---------------------------------------------------------------------------
+# Scheduling
+# ---------------------------------------------------------------------------
+
+nodePool: workers
+
+# ---------------------------------------------------------------------------
+# Reliability
+# ---------------------------------------------------------------------------
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 50%
+
+# ---------------------------------------------------------------------------
+# Observability
+# ---------------------------------------------------------------------------
+
+prometheus:
+  port: app
+  path: /metrics
+  serviceMonitor:
+    enabled: true
+
+# ---------------------------------------------------------------------------
+# Identity
+# ---------------------------------------------------------------------------
+
+serviceAccount:
+  create: true
+  awsRoleArn: arn:aws:iam::123456789012:role/my-app-role

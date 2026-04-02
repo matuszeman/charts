@@ -1,0 +1,79 @@
+# Example: Shared defaults via global.idpAppConfig.defaults
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-shared-defaults_test.yaml.snap
+# Defaults are set once in the umbrella chart and inherited by every app chart.
+# Individual charts can override any field.
+
+global:
+  cluster: production
+  idpAppConfig:
+    imageRepositories:
+      private: 123456.dkr.ecr.eu-central-1.amazonaws.com
+
+    clusters:
+      production:
+        domains:
+          public: example.com
+
+    defaults:
+      # Default image registry alias — used when containers.*.imageRepository is not set
+      imageRepository: private
+      imagePullPolicy: IfNotPresent
+
+      # Default pod-level security context applied to all charts
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      # Default ingress settings merged with per-chart ingress values
+      ingress:
+        enabled: false
+        className: nginx-external
+        certManagerClusterIssuer: letsencrypt-prod
+        path: /
+
+      # Default Gateway API route settings
+      httpRoute:
+        enabled: false
+        pathType: PathPrefix
+        forwardAuth:
+          enabled: false
+
+      # Default config resource settings
+      configs:
+        externalSecret:
+          refreshInterval: "99999h"
+
+# ---------------------------------------------------------------------------
+# App chart — inherits all defaults above, overrides only what differs
+# ---------------------------------------------------------------------------
+
+appName: my-app
+appVersion: "1.0.0"
+
+deployment:
+  enabled: true
+
+service:
+  enabled: true
+  port: 80
+
+# Override only the fields that differ from defaults
+securityContext:
+  runAsUser: 2000          # overrides default; runAsNonRoot and fsGroup are inherited
+
+ingress:
+  enabled: true            # enables ingress; className and certManagerClusterIssuer come from defaults
+  domain: public
+  host: my-app
+
+containers:
+  app:
+    image: my-app
+    imageTag: "1.0.0"
+    containerPort: 8080
+    imageRepository: public  # overrides the default "private" registry for this container
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi

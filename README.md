@@ -1,19 +1,10 @@
 # Helm Repository
 
-## Get started
+Repository: https://matuszeman.github.io/charts
 
-Add this repository to Helm.
+## idp-app
 
-```
-helm repo add matuszeman https://matuszeman.github.io/charts/
-```
+A general-purpose Helm chart for deploying any Kubernetes workload — Deployment, StatefulSet, Job, or CronJob — without writing boilerplate.
+It is designed to be used directly or as a dependency inside an umbrella chart.
 
-Update repositories
-```
-helm repo update
-```
-
-List charts
-```
-helm search repo matuszeman
-```
+[Read more](charts/idp-app/README.md)

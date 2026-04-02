@@ -31,7 +31,12 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   serviceAccountName: {{ include "idp-app.serviceAccountName" $ }}
-  {{- with $.Values.securityContext }}
+  {{- $securityContextDefault := dict }}
+  {{- if and $.Values.global $.Values.global.idpAppConfig $.Values.global.idpAppConfig.defaults }}
+  {{- $securityContextDefault = $.Values.global.idpAppConfig.defaults.securityContext | default dict }}
+  {{- end }}
+  {{- $securityContext := mustMergeOverwrite (deepCopy $securityContextDefault) (deepCopy ($.Values.securityContext | default dict)) }}
+  {{- with $securityContext }}
   securityContext:
     {{- toYaml . | nindent 4 }}
   {{- end }}

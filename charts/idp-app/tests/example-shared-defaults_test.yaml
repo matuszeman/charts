@@ -1,0 +1,9 @@
+suite: example - shared defaults
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot
+    values:
+      - values/examples/shared-defaults.yaml
+    asserts:
+      - matchSnapshot: {}

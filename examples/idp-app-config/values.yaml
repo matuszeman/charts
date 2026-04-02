@@ -13,6 +13,7 @@ global:
           http-public:
             name: http-public
             namespace: dev-gateway
+            controller: traefik
             # traefik can be deployed on cluster multiple times, where it uses label selector to select only specific resources (e.g. middleware) that belong to it
             labelSelector:
               traefik.io/controller: traefik-private

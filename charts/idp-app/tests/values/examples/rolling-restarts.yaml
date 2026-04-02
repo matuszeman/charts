@@ -1,0 +1,55 @@
+# Example: Automatic rolling restarts on config changes
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-rolling-restarts_test.yaml.snap
+# Setting restartPodOnUpdate on a config causes pods to restart automatically
+# when the config content changes, without any manual annotation management.
+#
+# Two strategies:
+#   PodAnnotation — adds a hash annotation to the pod template; Kubernetes
+#                   triggers a rolling restart when the annotation changes.
+#   NameSuffix    — appends a short content hash to the resource name itself;
+#                   useful for immutable configs or when you want the old
+#                   resource to remain until the rollout completes.
+
+appName: my-app
+appVersion: "1.0.0"
+
+deployment:
+  enabled: true
+
+configs:
+  # PodAnnotation: rolling restart is triggered by a hash added to the pod
+  # template annotations. The ConfigMap name stays stable.
+  app-config:
+    restartPodOnUpdate: PodAnnotation
+    content:
+      config.yaml: |
+        server:
+          port: 8080
+
+  # NameSuffix: the ConfigMap name gets a short hash suffix (e.g. -a1b2c3d).
+  # Pods always reference the exact versioned name, so a content change creates
+  # a new ConfigMap and triggers a rolling restart via the updated volume ref.
+  app-secrets:
+    restartPodOnUpdate: NameSuffix
+    awsSecret:
+      arn: arn:aws:secretsmanager:eu-central-1:123456789012:secret:my-app/prod
+
+  # No restartPodOnUpdate — config changes do not trigger pod restarts.
+  static-config:
+    content:
+      static.yaml: |
+        key: value
+
+containers:
+  app:
+    image: my-app
+    imageTag: "1.0.0"
+    containerPort: 8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    configDirs:
+      app-config:  /etc/app
+      app-secrets: /run/secrets
+      static-config: /etc/static

@@ -1,0 +1,97 @@
+# Example: Multi-cluster aware configuration
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-multi-cluster_test.yaml.snap
+# global.idpAppConfig is set once at the umbrella chart level and shared across
+# all app charts. Each app chart references clusters, domains, node pools, and
+# gateways by name — switching clusters requires only changing global.cluster.
+
+global:
+  cluster: production     # Change to "staging" to target a different cluster
+
+  idpAppConfig:
+    imageRepositories:
+      private: 123456.dkr.ecr.eu-central-1.amazonaws.com
+      public:  public.ecr.aws/123456
+
+    clusters:
+      production:
+        aws_region: eu-central-1
+        domains:
+          public:   example.com
+          internal: internal.example.com
+        nodePools:
+          workers:
+            nodeSelector:
+              role: worker
+            tolerations:
+              - key: role
+                operator: Equal
+                value: worker
+                effect: NoSchedule
+        httpGateways:
+          http-public:
+            controller: traefik
+            name: http-public
+            namespace: gateway
+        apps:
+          authelia:
+            traefik:
+              forwardAuthMiddleware:
+                address: http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+                trustForwardHeader: true
+                authResponseHeaders:
+                  - Remote-User
+                  - Remote-Groups
+
+      staging:
+        aws_region: eu-central-1
+        domains:
+          public:   staging.example.com
+          internal: internal.staging.example.com
+        nodePools:
+          workers:
+            nodeSelector:
+              role: worker
+        httpGateways:
+          http-public:
+            controller: traefik
+            name: http-public
+            namespace: gateway
+
+# ---------------------------------------------------------------------------
+# App chart values — these stay identical across clusters
+# ---------------------------------------------------------------------------
+
+appName: my-app
+appVersion: "1.0.0"
+
+deployment:
+  enabled: true
+
+service:
+  enabled: true
+  port: 80
+
+nodePool: workers          # resolves to the correct nodeSelector/tolerations for the active cluster
+
+ingress:
+  enabled: true
+  domain: public           # resolves to example.com in production, staging.example.com in staging
+  host: my-app             # results in my-app.example.com or my-app.staging.example.com
+
+httpRoutes:
+  public:
+    enabled: true
+    gatewayName: http-public
+    domain: public
+    host: my-app
+    path: /
+
+containers:
+  app:
+    image: my-app
+    imageTag: "1.0.0"
+    containerPort: 8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi

@@ -1,0 +1,9 @@
+suite: example - config management
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot
+    values:
+      - values/examples/config-management.yaml
+    asserts:
+      - matchSnapshot: {}

@@ -1,0 +1,21 @@
+# Example: One chart for all workload types
+# Snapshot: https://github.com/matuszeman/charts/blob/main/charts/idp-app/tests/__snapshot__/example-workload-types_test.yaml.snap
+# Switch between Deployment, StatefulSet, Job, and CronJob by pairing this
+# base file with one of the type-specific files alongside it:
+#   workload-types-deployment.yaml
+#   workload-types-statefulset.yaml
+#   workload-types-job.yaml
+#   workload-types-cronjob.yaml
+
+appName: my-app
+appVersion: "1.0.0"
+
+containers:
+  app:
+    image: my-app
+    imageTag: "1.0.0"
+    containerPort: 8080
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi

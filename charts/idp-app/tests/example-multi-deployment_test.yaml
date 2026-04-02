@@ -1,0 +1,9 @@
+suite: example - multi deployment
+values:
+  - values/minimum.yaml
+tests:
+  - it: should match snapshot
+    values:
+      - values/examples/multi-deployment.yaml
+    asserts:
+      - matchSnapshot: {}
