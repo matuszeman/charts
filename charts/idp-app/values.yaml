@@ -385,12 +385,15 @@ configs: {}
 #     # valuesHash: abc123              # Provide a hash for restartPodOnUpdate to work
 #     # restartPodOnUpdate: NameSuffix  # Appends hash to the reference name
 #
-#   # Reference a ConfigMap created from a folder in the umbrella chart.
-#   # The umbrella chart must call {{ include "idp-app.configFilesFromFolder" (list $ctx "folder") }}
-#   # in its own template. A ConfigMap named <fullname>-config-<key> is expected to exist.
+#   # Create a ConfigMap from files in a folder of the umbrella chart.
+#   # The umbrella chart's templates/configs.yaml must contain a single line:
+#   #   {{- include "idp-app.configsFromFolders" (list . .Values.<alias>) }}
+#   # All files in the folder become data keys in a ConfigMap named <fullname>-config-<key>.
+#   # Supports: secret: {}, templated, labels, annotations.
+#   # Note: restartPodOnUpdate is not supported for fromFolder configs.
 #   # See examples/config-files for a complete example.
 #   app-config:
-#     fromFolder: configs   # Folder relative to umbrella chart root
+#     fromFolder: configs   # Folder path relative to umbrella chart root
 #
 #   # Reference an existing Secret — no new resource is created
 #   existing-secret:

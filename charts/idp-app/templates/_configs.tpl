@@ -38,6 +38,58 @@ config-hash-{{ $configKey }}: {{ $hash | quote }}
 {{- end }}
 {{- end }}
 {{- end }}
+{{/*
+Render a ConfigMap or Secret from inline content.
+Shared by configs.yaml (inline content/secret configs) and _config-files.tpl (fromFolder configs).
+
+Arguments: (list $ $configKey $configSpec)
+  $         — root context (.Values must be idp-app values)
+  $configKey — config map key
+  $configSpec — config spec with .content map; optionally .secret {}, .labels, .annotations,
+                .templated, and any other standard config options
+*/}}
+{{- define "idp-app.renderConfigFromContent" -}}
+{{- $ := index . 0 -}}
+{{- $configKey := index . 1 -}}
+{{- $configSpec := index . 2 -}}
+{{- $defaultsConfigsAnnotations := (((($.Values.global).idpAppConfig).defaults).configs).annotations | default (dict) -}}
+{{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) -}}
+{{- $mergedAnnotations := merge (dict) $defaultsConfigsAnnotations (default $configSpec.annotations dict) -}}
+{{- $isSecret := kindIs "map" $configSpec.secret -}}
+---
+apiVersion: v1
+kind: {{ $isSecret | ternary "Secret" "ConfigMap" }}
+metadata:
+  name: {{ include "idp-app.configName" (list $ $configKey) }}
+  labels:
+    {{- toYaml $mergedLabels | nindent 4 }}
+  {{- with $mergedAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- if $isSecret }}
+type: {{ $configSpec.secret.type | default "Opaque" }}
+{{- end }}
+data:
+{{- range $contentKey, $v := $configSpec.content }}
+  {{- $rawValue := $v | required (printf "configs.%s.content.%s required" $configKey $contentKey) }}
+  {{- $strValue := "" }}
+  {{- if kindIs "map" $rawValue }}
+    {{- $strValue = $rawValue | toYaml }}
+  {{- else }}
+    {{- $strValue = $rawValue | toString }}
+  {{- end }}
+  {{- $val := "" }}
+  {{- if $configSpec.templated }}
+  {{- $tplCtx := merge dict (mustDeepCopy $) (dict "configKey" $configKey "configSpec" $configSpec "contentKey" $contentKey) }}
+  {{- $val = tpl $strValue $tplCtx }}
+  {{- else }}
+  {{- $val = $strValue }}
+  {{- end }}
+  {{ $contentKey }}:
+    {{- toYaml ($isSecret | ternary ($val | b64enc) $val) | nindent 4 }}
+{{- end }}
+{{- end }}
 {{- define "idp-app.isConfigUsedInContainersVolumeMounts"}}
 {{- /* should be in sync with _pod.tpl config volume mounts, and implemented nicer! */ -}}
 {{- $configKeyToCheck := index . 0 -}}

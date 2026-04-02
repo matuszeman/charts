@@ -36,7 +36,7 @@ Ask what should be tested and what type is preferred:
 
 # Documentation
 
-When implementing a new feature or updating an existing one in helm chart templates update the relevant files below.
+Always keep relevant documentation in sync with all changes.
 
 ## values.yaml
 

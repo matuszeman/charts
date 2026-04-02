@@ -1,35 +1,8 @@
 {{/*
-Create ConfigMaps from files in a folder of the umbrella chart.
-Prefer using idp-app.configsFromFolders which handles iteration automatically.
-
-Low-level usage (single folder):
-  {{- include "idp-app.configFilesFromFolder" (list $ctx "configs") }}
-Each file <folder>/<name>.<ext> becomes a ConfigMap named <fullname>-config-<name>.
-The folder can be any path relative to the umbrella chart root.
-*/}}
-{{- define "idp-app.configFilesFromFolder" -}}
-{{- $ := index . 0 -}}
-{{- $folder := index . 1 -}}
-{{- range $path, $_ := $.Files.Glob (printf "%s/*" $folder) }}
-{{- $filename := base $path }}
-{{- $name := trimSuffix (ext $filename) $filename }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "idp-app.fullname" $ }}-config-{{ $name }}
-  labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
-data:
-  {{ $filename }}: |
-{{ $.Files.Get $path | indent 4 }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create ConfigMaps for all configs that use fromFolder in the umbrella chart.
-Iterates over idp-app values, finds unique fromFolder values, and calls
-idp-app.configFilesFromFolder once per unique folder.
+Create ConfigMaps (or Secrets) for all configs that use fromFolder in the umbrella chart.
+Reads files from the specified folder, builds the content map, and delegates rendering
+to idp-app.renderConfigFromContent — supporting all config features: secret, templated,
+labels, annotations, etc.
 
 Usage in an umbrella chart template (single line):
   {{- include "idp-app.configsFromFolders" (list . .Values.app) }}
@@ -37,18 +10,22 @@ Usage in an umbrella chart template (single line):
 Arguments:
   index 0 — umbrella chart root context (provides .Files for glob/read)
   index 1 — idp-app dependency values (e.g. .Values.app or .Values.myalias)
+
+Note: restartPodOnUpdate is not supported for fromFolder configs because file content
+is not available in the idp-app values context used by pod template helpers.
 */}}
 {{- define "idp-app.configsFromFolders" -}}
 {{- $root := index . 0 -}}
 {{- $values := index . 1 -}}
 {{- $ctx := set (mustDeepCopy $root) "Values" $values -}}
-{{- $folders := list -}}
 {{- range $configKey, $configSpec := $values.configs -}}
 {{- if $configSpec.fromFolder -}}
-{{- if not (has $configSpec.fromFolder $folders) -}}
-{{- $folders = append $folders $configSpec.fromFolder -}}
-{{ include "idp-app.configFilesFromFolder" (list $ctx $configSpec.fromFolder) }}
+{{- $content := dict -}}
+{{- range $path, $_ := $root.Files.Glob (printf "%s/*" $configSpec.fromFolder) -}}
+{{- $content = set $content (base $path) ($root.Files.Get $path) -}}
 {{- end -}}
+{{- $mergedSpec := merge (mustDeepCopy $configSpec) (dict "content" $content) -}}
+{{ include "idp-app.renderConfigFromContent" (list $ctx $configKey $mergedSpec) }}
 {{- end -}}
 {{- end -}}
 {{- end }}

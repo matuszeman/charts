@@ -9,11 +9,13 @@ The chart is composed of composable named templates in `templates/_*.tpl`:
 - `_helpers.tpl` — Name/label helpers; `idp-app.clusterConfig` and `idp-app.clusterConfigMapValue` resolve cluster-specific values from `global.idpAppConfig.clusters`
 - `_pod.tpl` — `idp-app.podTemplate` builds the pod spec; assembles volumes from `configs` and `volumes`, applies `nodePool`, `topologySpreadConstraints`, etc.
 - `_container.tpl` — `idp-app.container` builds individual container specs; resolves image repos from `global.idpAppConfig.imageRepositories`, handles `configDirs`/`configFiles`/`volumeMounts`/`volumeFiles` and `env` config references (auto-detects ConfigMap vs Secret type)
-- `_configs.tpl` — Four helpers:
+- `_configs.tpl` — Five helpers:
   - `idp-app.configName` — computes the final resource name (appends hash suffix for `NameSuffix` strategy)
   - `idp-app.configHash` — computes a content hash from `content`, `awsSecret.arn`+`versionId`, `sealedSecret.encryptedData`, or manual `valuesHash`
   - `idp-app.configsPodAnnotations` — emits pod annotations for `PodAnnotation` restart strategy
+  - `idp-app.renderConfigFromContent` — unified ConfigMap/Secret renderer shared by `configs.yaml` and `_config-files.tpl`; takes `(list $ $configKey $configSpec)` with a populated `content` map
   - `idp-app.isConfigUsedInContainersVolumeMounts` — checks whether a config key is referenced by any container's `configDirs`/`configFiles` (controls whether a volume is emitted in the pod spec)
+- `_config-files.tpl` — `idp-app.configsFromFolders` — umbrella-chart entry point for `fromFolder` configs; iterates configs with `fromFolder` set, reads each file via `$root.Files.Glob`/`Files.Get` and calls `idp-app.renderConfigFromContent`
 
 # Key Values Patterns
 
@@ -24,7 +26,7 @@ The chart is composed of composable named templates in `templates/_*.tpl`:
 
 **`imagePullPolicy` precedence** — `global.idpAppConfig.defaults.imagePullPolicy` takes priority over the per-container `imagePullPolicy` field. The global default is `IfNotPresent` when not set. To use a different policy on a specific container, do not set the global default.
 
-**`configs`** — manages ConfigMaps/Secrets. Sources: `content` (inline), `fromConfigMap`/`fromSecret` (existing resources), `awsSecret` (External Secrets Operator), `sealedSecret`. Referenced in containers via:
+**`configs`** — manages ConfigMaps/Secrets. Sources: `content` (inline), `fromFolder` (files from umbrella chart folder), `fromConfigMap`/`fromSecret` (existing resources), `awsSecret` (External Secrets Operator), `sealedSecret`. Referenced in containers via:
 - `configDirs` — mount whole config as a directory
 - `configFiles` — mount individual files from a config
 - `env.<VAR>.config` — inject a single key as an environment variable; the type (ConfigMap or Secret) is resolved automatically
@@ -37,6 +39,13 @@ When any config uses `awsSecret`, a `SecretStore` resource is automatically crea
 - `PodAnnotation` — adds a `config-hash-<key>` annotation to the pod template; triggers rolling restart when content changes
 - `NameSuffix` — appends a short content hash to the ConfigMap/Secret name; any name change forces Kubernetes to re-mount and restart pods
 - `fromConfigMap`/`fromSecret` sources require a manual `valuesHash` for either strategy to work
+- `fromFolder` does not support `restartPodOnUpdate` — file content is not present in idp-app's Values at pod template render time
+
+**`fromFolder` (umbrella charts)** — reads all files from a folder in the parent chart and creates a ConfigMap (or Secret) with each filename as a data key. Because `Files.Glob`/`Files.Get` can only access the files of the chart that owns the template, the umbrella must have a `templates/configs.yaml` containing a single line:
+```
+{{- include "idp-app.configsFromFolders" (list . .Values.<alias>) }}
+```
+The first argument is the umbrella root context (provides `.Files`); the second is the idp-app dependency's values. `idp-app.configsFromFolders` builds the correct idp-app context (`set (mustDeepCopy $root) "Values" $values`) so all idp-app helpers (`idp-app.fullname`, `idp-app.labels`, etc.) resolve correctly while `.Files` still reads from the umbrella chart. Supports all `content`-based features: `secret: {}`, `templated`, `labels`, `annotations`.
 
 **`volumes`** — mounts arbitrary volumes. PVCs without `claimName` are auto-created by `pvc.yaml` (one per Deployment in `deployment.multi`). PVCs with `claimName` reference an existing PVC.
 

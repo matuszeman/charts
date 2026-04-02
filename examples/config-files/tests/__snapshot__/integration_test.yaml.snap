@@ -80,7 +80,7 @@ should match snapshot:
   3: |
     apiVersion: v1
     data:
-      app.yaml: |
+      app.yaml: |-
         some:
           app: config
     kind: ConfigMap
