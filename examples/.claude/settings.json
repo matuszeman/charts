@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(helm dependency:*)",
       "Bash(helm show:*)",
       "Bash(helm template:*)",
       "Bash(helm unittest:*)"
