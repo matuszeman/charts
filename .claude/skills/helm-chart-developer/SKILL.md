@@ -8,6 +8,8 @@ description: Use when user need work on helm chart related tasks, analyze, imple
 When executing commands below, and there are other value files in the chart folder,
 When there are multiple files in chart folder, ask what file to use. values-ci.yaml is usually used for CI workflows.
 
+If there are some references to usage example charts in documentation, make sure to test them too.
+
 ```shell
 # Linting
 helm lint . [-f values-file.yaml]
@@ -64,7 +66,16 @@ Explains concepts, implementation details, decisions.
 
 Use semantic versioning.
 
+Bump the version:
+- major - when making breaking / backward incompatible changes - same values renders diff after upgrade
+- minor - when implementing new features - same values won't render any diff after upgrade
+- patch - when fixing something only / refactoring
+
+**Always bump `Chart.yaml` version automatically** after every change (feature, fix, refactor). Do not wait to be asked.
+
 # Dependencies
+
+Do NOT add repo to local helm repository
 
 ## Adding new dependency
 

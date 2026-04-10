@@ -100,3 +100,27 @@ Create the name of the service account to use
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 {{- index (index $cluster $key | required (printf "global.idpAppConfig.clusters.%s.%s is not defined" $.Values.global.cluster $key)) $index | required (printf "global.idpAppConfig.clusters.%s.%s.%s is not defined" $.Values.global.cluster $key $index) | toYaml }}
 {{- end }}
+{{/*
+Resolve a hostname from a domain value and an optional host prefix.
+Domain may contain a generic <HOST{sep}> placeholder (e.g. <HOST.>, <HOST->, <HOST_>).
+When host is set: placeholder is replaced by "{host}{sep}".
+When host is empty: placeholder is removed entirely.
+When domain has no placeholder: host is prepended with "." separator (legacy behaviour).
+*/}}
+{{- define "idp-app.resolveHostFromDomain" -}}
+{{- $host := index . 0 -}}
+{{- $domain := index . 1 -}}
+{{- if regexMatch "<HOST[^>]*>" $domain -}}
+  {{- if $host -}}
+    {{- regexReplaceAll "<HOST([^>]*)>" $domain (printf "%s${1}" $host) -}}
+  {{- else -}}
+    {{- regexReplaceAll "<HOST[^>]*>" $domain "" -}}
+  {{- end -}}
+{{- else -}}
+  {{- if $host -}}
+    {{- printf "%s.%s" $host $domain -}}
+  {{- else -}}
+    {{- $domain -}}
+  {{- end -}}
+{{- end -}}
+{{- end -}}

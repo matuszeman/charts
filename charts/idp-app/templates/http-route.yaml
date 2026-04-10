@@ -21,11 +21,7 @@
 {{- $host := "" }}
 {{- if $route.domain }}
 {{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
-{{- if $route.host }}
-{{- $host = (printf "%s.%s" $route.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
-{{- else }}
-{{- $host = $domain }}
-{{- end }}
+{{- $host = (include "idp-app.resolveHostFromDomain" (list $route.host $domain)) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- else }}
 {{- $host = ($route.host | required "httpRoute: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- end }}

@@ -21,11 +21,7 @@
 {{- $host := "" }}
 {{- if $ingress.domain }}
 {{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $ingress.domain) }}
-{{- if $ingress.host }}
-{{- $host = (printf "%s.%s" $ingress.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
-{{- else }}
-{{- $host = $domain }}
-{{- end }}
+{{- $host = (include "idp-app.resolveHostFromDomain" (list $ingress.host $domain)) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- else }}
 {{- $host = ($ingress.host | required "ingress: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- end }}
