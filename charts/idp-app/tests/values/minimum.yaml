@@ -11,6 +11,9 @@ global:
         aws_region: eu-central-1
         domains:
           example.com: example.com
+          host-dot-dev: "<HOST.>dev.example.com"
+          host-dash-dev: "<HOST->dev.example.com"
+          host-under-dev: "<HOST_>dev.example.com"
         httpGateways:
           http-public:
             controller: traefik

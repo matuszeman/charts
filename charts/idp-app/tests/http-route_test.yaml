@@ -123,6 +123,84 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: "global.idpAppConfig.clusters.test.domains.nonexistent is not defined"
+  - it: when domain has <HOST.> placeholder and host is set, should embed host with dot separator
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: host-dot-dev
+          host: aaa
+          path: /
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: aaa.dev.example.com
+
+  - it: when domain has <HOST-> placeholder and host is set, should embed host with dash separator
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: host-dash-dev
+          host: aaa
+          path: /
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: aaa-dev.example.com
+
+  - it: when domain has <HOST_> placeholder and host is set, should embed host with underscore separator
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: host-under-dev
+          host: aaa
+          path: /
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: aaa_dev.example.com
+
+  - it: when domain has <HOST.> placeholder and no host is set, should remove placeholder
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: host-dot-dev
+          path: /
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: dev.example.com
+
+  - it: when domain has <HOST-> placeholder and no host is set, should remove placeholder
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: host-dash-dev
+          path: /
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: dev.example.com
+
   - it: multi support
     values:
       - values/multi.yaml

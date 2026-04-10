@@ -151,6 +151,94 @@ tests:
             name: RELEASE-NAME-existing-service
             port:
               number: 80
+  - it: when domain has <HOST.> placeholder and host is set, should embed host with dot separator
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: host-dot-dev
+        host: aaa
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: aaa.dev.example.com
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: aaa.dev.example.com
+
+  - it: when domain has <HOST-> placeholder and host is set, should embed host with dash separator
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: host-dash-dev
+        host: aaa
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: aaa-dev.example.com
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: aaa-dev.example.com
+
+  - it: when domain has <HOST_> placeholder and host is set, should embed host with underscore separator
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: host-under-dev
+        host: aaa
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: aaa_dev.example.com
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: aaa_dev.example.com
+
+  - it: when domain has <HOST.> placeholder and no host is set, should remove placeholder
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: host-dot-dev
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: dev.example.com
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: dev.example.com
+
+  - it: when domain has <HOST-> placeholder and no host is set, should remove placeholder
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+    set:
+      ingress:
+        enabled: true
+        className: nginx-internal
+        domain: host-dash-dev
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: dev.example.com
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: dev.example.com
+
   - it: when host is not defined, should use domain only
     values:
       - values/deployment.yaml

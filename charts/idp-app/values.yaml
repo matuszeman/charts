@@ -579,6 +579,10 @@ ingress: {}
 #   host: my-app                       # With domain: results in my-app.example.com
 #   # host: my-app.example.com         # Without domain: used as full hostname directly
 #
+#   # Domain values may contain a generic <HOST{sep}> placeholder to control separator and position.
+#   # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
+#   # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
+#
 #   path: /                            # URL path prefix
 #   # rewriteTarget: /                 # Rewrite the path before forwarding (nginx rewrite-target)
 #
@@ -620,6 +624,9 @@ httpRoutes: {}
 #     gatewayName: http-public         # Named gateway from clusters.<cluster>.httpGateways
 #
 #     # Host resolution (same as ingress — domain + host, or host alone):
+#     # Domain values may contain a generic <HOST{sep}> placeholder to control separator and position.
+#     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
+#     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
 #     domain: example.com
 #     host: my-app                     # Results in my-app.example.com
 #
