@@ -362,11 +362,20 @@ containers:
 # configs — Map of config definitions. Each entry creates a ConfigMap, Secret,
 # ExternalSecret, or SealedSecret, or references an existing resource.
 # Configs are mounted into containers via configDirs, configFiles, or env.
+#
+# Templating: inline content (ConfigMap, Secret) and fromFolder all support
+# `templated: true`, which renders each content value through Helm's `tpl`.
+# Template context: standard Helm variables (.Release, .Values, .Chart, …)
+# plus three injected extras:
+#   .configKey   — the key of this config entry (e.g. "app-config")
+#   .configSpec  — the full config spec, incl. .configSpec.values for custom variables
+#   .contentKey  — the individual data key being rendered (e.g. "config.yaml")
+# awsSecret and sealedSecret do not support templating (no rendered content).
 configs: {}
 # Example config definitions:
 #
 # configs:
-#   # Inline ConfigMap — creates a ConfigMap with the given key/value pairs
+#   # Inline ConfigMap — creates a ConfigMap with the given key/value pairs.
 #   app-config:
 #     content:
 #       config.yaml: |
@@ -378,16 +387,35 @@ configs: {}
 #     # labels: {}          # Extra labels on the ConfigMap resource
 #     # annotations: {}     # Extra annotations on the ConfigMap resource
 #
-#   # Inline Secret — set secret: {} to create an Opaque Secret instead of ConfigMap
+#   # Inline ConfigMap with templated content.
+#   # `values:` is an arbitrary map injected into the template context as .configSpec.values.*
+#   # — the idiomatic way to pass config-specific variables without touching .Values globally.
+#   app-config-templated:
+#     templated: true
+#     values:
+#       dbHost: postgres.prod.svc.cluster.local
+#       logLevel: info
+#     content:
+#       config.yaml: |
+#         namespace: {{ .Release.Namespace }}
+#         release:   {{ .Release.Name }}
+#         db_host:   {{ .configSpec.values.dbHost }}
+#         log_level: {{ .configSpec.values.logLevel }}
+#
+#   # Inline Secret — templated: true works exactly the same way; values are
+#   # templated before base64-encoding.
 #   app-secrets:
 #     secret: {}          # secret: {} = Opaque; secret: {type: kubernetes.io/tls} for other types
+#     templated: true
+#     values:
+#       suffix: "{{ .Release.Name }}"
 #     content:
-#       db_password: s3cr3t
-#       api_key: mykey
+#       db_password: "s3cr3t-{{ .configSpec.values.suffix }}"
 #     # defaultMode: 0400   # Restrictive permissions recommended for secrets
 #     # restartPodOnUpdate: NameSuffix  # Append content hash to resource name (forces pod restart)
 #
-#   # AWS Secrets Manager — pulls a secret via External Secrets Operator
+#   # AWS Secrets Manager — pulls a secret via External Secrets Operator.
+#   # Does not support templated: true (no content rendered by the chart).
 #   aws-secret:
 #     awsSecret:
 #       arn: arn:aws:secretsmanager:eu-central-1:123456789012:secret:my-app/prod
@@ -395,16 +423,18 @@ configs: {}
 #     # valuesHash: abc123   # Manual hash override (useful when arn/versionId don't change)
 #     # restartPodOnUpdate: NameSuffix
 #
-#   # SealedSecret — Bitnami sealed-secrets controller decrypts this at runtime
+#   # SealedSecret — Bitnami sealed-secrets controller decrypts this at runtime.
+#   # Does not support templated: true (encrypted data cannot be rendered by the chart).
 #   sealed-config:
 #     sealedSecret:
 #       encryptedData:
 #         db_password: AgBy3i4OJSWK...
 #       # scope: cluster-wide  # Optional: cluster-wide | namespace-wide (default: strict)
 #
-#   # Reference an existing ConfigMap — no new resource is created
+#   # Reference an existing ConfigMap — the reference string is always rendered through
+#   # tpl (no flag needed). No content is created; `templated: true` has no effect here.
 #   existing-cm:
-#     fromConfigMap: "{{ .Release.Name }}-my-configmap"   # Supports tpl
+#     fromConfigMap: "{{ .Release.Name }}-my-configmap"
 #     # valuesHash: abc123              # Provide a hash for restartPodOnUpdate to work
 #     # restartPodOnUpdate: NameSuffix  # Appends hash to the reference name
 #
@@ -412,21 +442,24 @@ configs: {}
 #   # The umbrella chart's templates/configs.yaml must contain a single line:
 #   #   {{- include "idp-app.configsFromFolders" (list . .Values.<alias>) }}
 #   # All files in the folder become data keys in a ConfigMap named <fullname>-config-<key>.
-#   # Supports: secret: {}, templated, labels, annotations.
+#   # Supports templated: true (and values:) — file contents are run through tpl at render time.
 #   # See examples/config-files for a complete example.
 #   #
 #   # restartPodOnUpdate: supported automatically when using idp-app.deployments in the
 #   # umbrella chart — file content hash is computed from .Files at render time.
 #   # Without idp-app.deployments, set valuesHash manually (e.g. from CI sha256sum).
-#   # See examples/config-files for the complete umbrella chart pattern.
-#   app-config:
+#   app-folder-config:
 #     fromFolder: configs   # Folder path relative to umbrella chart root
+#     templated: true       # Optional: render file contents as Go templates
+#     values:               # Optional: extra variables accessible as .configSpec.values.*
+#       env: production
 #     restartPodOnUpdate: PodAnnotation  # Auto-computed when using idp-app.deployments
 #     # valuesHash: abc123  # Manual override; takes precedence over auto-computed hash
 #
-#   # Reference an existing Secret — no new resource is created
+#   # Reference an existing Secret — the reference string is always rendered through
+#   # tpl (no flag needed).
 #   existing-secret:
-#     fromSecret: "{{ .Release.Name }}-my-secret"         # Supports tpl
+#     fromSecret: "{{ .Release.Name }}-my-secret"
 
 # ---------------------------------------------------------------------------
 # Volumes
@@ -497,8 +530,14 @@ deployment:
   # multi — Create multiple Deployments/StatefulSets from one chart release.
   # Each key becomes a name suffix appended to the release name.
   # The containers map at the multi level is deep-merged over the top-level containers.
+  #
+  # HTTPRoutes and Ingresses are created once per deployment:
+  # Use __DEPLOYMENT_ID__ in ingress.host / httpRoutes.*.host to inject the deployment
+  # key as part of the hostname. This creates one route per deployment with a unique host.
+  #
   # Example:
   # multi:
+  #   api: {}   # Inherits top-level containers as-is
   #   worker:
   #     containers:
   #       app:
@@ -507,7 +546,17 @@ deployment:
   #           requests:
   #             cpu: 500m
   #             memory: 512Mi
-  #   api: {}   # Inherits top-level containers as-is
+  #
+  # Combined with:
+  #   httpRoutes:
+  #     public:
+  #       enabled: true
+  #       gatewayName: http-public
+  #       domain: example.com
+  #       host: __DEPLOYMENT_ID__   # → api.example.com and worker.example.com
+  #       path: /
+  #
+  # See tests/values/examples/multi-deployment.yaml for a full example.
 
 job:
   enabled: false
@@ -616,6 +665,10 @@ ingresses: {}
 # httpRoutes — Map of HTTPRoute definitions (Gateway API).
 # Merged with global.idpAppConfig.defaults.httpRoute.
 # Note: service.enabled must be true (or httpRoute.service must be set).
+#
+# multi support: when deployment.multi is set, one HTTPRoute is created per deployment.
+# Use __DEPLOYMENT_ID__ in host to inject the deployment key into the hostname:
+#   host: __DEPLOYMENT_ID__  →  one.example.com, two.example.com (for multi keys "one", "two")
 httpRoutes: {}
 # Example HTTPRoute configuration:
 # httpRoutes:
@@ -624,11 +677,17 @@ httpRoutes: {}
 #     gatewayName: http-public         # Named gateway from clusters.<cluster>.httpGateways
 #
 #     # Host resolution (same as ingress — domain + host, or host alone):
+#     domain: example.com
+#     host: my-app                     # Results in my-app.example.com
+#     # host: my-app.example.com       # Without domain: used as full FQDN directly
+#
 #     # Domain values may contain a generic <HOST{sep}> placeholder to control separator and position.
 #     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
 #     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
-#     domain: example.com
-#     host: my-app                     # Results in my-app.example.com
+#
+#     # __DEPLOYMENT_ID__ placeholder (for deployment.multi):
+#     # host: __DEPLOYMENT_ID__          # replaced with each deployment key → one.example.com, two.example.com
+#     # domain: <HOST.>example.com       # also works with domain placeholder: one.example.com, two.example.com
 #
 #     path: /                          # [required] URL path to match
 #     pathType: PathPrefix             # PathPrefix | Exact | RegularExpression
@@ -637,6 +696,14 @@ httpRoutes: {}
 #
 #     # Extra Gateway API filters (appended after forwardAuth if enabled)
 #     # filters: []
+#
+#     # External / override service backend.
+#     # Use when service.enabled is false and you want to route to an existing Service
+#     # (e.g. a service in the same namespace created outside this chart).
+#     # Mutually exclusive with service.enabled — setting both causes a template error.
+#     # service:
+#     #   name: my-external-svc       # [required] Name of the target Service (supports tpl)
+#     #   port: 8080                  # [required] Service port number
 #
 #     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically)
 #     # forwardAuth:
