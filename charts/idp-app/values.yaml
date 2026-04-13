@@ -665,6 +665,10 @@ ingresses: {}
 # httpRoutes — Map of HTTPRoute definitions (Gateway API).
 # Merged with global.idpAppConfig.defaults.httpRoute.
 # Note: service.enabled must be true (or httpRoute.service must be set).
+#
+# multi support: when deployment.multi is set, one HTTPRoute is created per deployment.
+# Use __DEPLOYMENT_ID__ in host to inject the deployment key into the hostname:
+#   host: __DEPLOYMENT_ID__  →  one.example.com, two.example.com (for multi keys "one", "two")
 httpRoutes: {}
 # Example HTTPRoute configuration:
 # httpRoutes:
@@ -673,11 +677,17 @@ httpRoutes: {}
 #     gatewayName: http-public         # Named gateway from clusters.<cluster>.httpGateways
 #
 #     # Host resolution (same as ingress — domain + host, or host alone):
+#     domain: example.com
+#     host: my-app                     # Results in my-app.example.com
+#     # host: my-app.example.com       # Without domain: used as full FQDN directly
+#
 #     # Domain values may contain a generic <HOST{sep}> placeholder to control separator and position.
 #     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
 #     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
-#     domain: example.com
-#     host: my-app                     # Results in my-app.example.com
+#
+#     # __DEPLOYMENT_ID__ placeholder (for deployment.multi):
+#     # host: __DEPLOYMENT_ID__          # replaced with each deployment key → one.example.com, two.example.com
+#     # domain: <HOST.>example.com       # also works with domain placeholder: one.example.com, two.example.com
 #
 #     path: /                          # [required] URL path to match
 #     pathType: PathPrefix             # PathPrefix | Exact | RegularExpression
