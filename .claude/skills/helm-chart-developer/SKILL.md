@@ -1,14 +1,66 @@
 ---
 name: helm-chart-developer
-description: Use when user need work on helm chart related tasks, analyze, implement, generate, render, verify, test helm chart templates, manage dependencies/subcharts and configure chart values.
+description: >
+   Use when user need work on helm chart related tasks, analyze, implement, generate, render, verify,
+   test helm chart templates, manage dependencies/subcharts and configure chart values.
+   ALWAYS invoke this skill automatically (without waiting to be asked) at the very start of any task
+   that will involve creating or modifying helm chart files (Chart.yaml, values.yaml, templates/,
+   Chart.lock, charts/) — even if the user did not explicitly mention helm or this skill.
+allowed-tools: Bash(helm lint *) Bash(helm template *) Bash(helm show *) Bash(helm unittest *) Bash(helm dep *)
 ---
 
 # Verification / Testing
 
-When executing commands below, and there are other value files in the chart folder,
-When there are multiple files in chart folder, ask what file to use. values-ci.yaml is usually used for CI workflows.
+**NEVER skip local testing after making changes.** Always run lint + template render before considering the work done.
 
-If there are some references to usage example charts in documentation, make sure to test them too.
+## Resolving value files for testing
+
+When the chart is deployed via ArgoCD, read the ArgoCD Application or `argocd-app.yaml` generator
+file to discover all `valueFiles` and `valuesObject` entries. Reconstruct the equivalent `-f` /
+`--set` flags for local commands.
+
+### Path resolution rules
+
+| Path format | Resolves to |
+|---|---|
+| `/some/path.yaml` | `<repo-root>/some/path.yaml` (absolute within repo) |
+| `./relative/path.yaml` | relative to the `argocd-app.yaml` file's directory |
+| `$values/some/path.yaml` | multi-source: path in the designated values repo |
+
+### Building the local command
+
+1. For each entry in `valueFiles`, resolve it using the rules above and add a `-f` flag.
+2. For each key in `valuesObject`, add a `--set key=value` flag (see AppSet-injected values below).
+3. Run from the chart directory:
+
+```shell
+helm template . \
+  -f <resolved-value-file-1> \
+  -f <resolved-value-file-2> \
+  --set <injected-key>=<injected-value>
+```
+
+### AppSet-injected values (`valuesObject`)
+
+When the AppSet injects values via `valuesObject` or `templatePatch`, those keys are not present
+in any file. Before running locally you must:
+
+1. Read the AppSet manifest and find all keys set under `valuesObject` or inside `templatePatch`.
+2. For each key, evaluate the Go template expression manually using the concrete app path.
+   Common functions: `base`, `dir`, `trimPrefix`, `hasPrefix` — same semantics as Go `path` package.
+3. Pass each resolved key via `--set key=value`.
+
+Example: an AppSet with
+`valuesObject.global.env: '{{ .path.path | dir | dir | base }}'`
+for app path `project/env/dev/cluster/app` resolves to `--set global.env=dev`.
+
+## Environment testing order
+
+1. Test the **current environment** first (the one being changed).
+2. After confirming it passes, ask the user whether to test additional environments.
+
+When there are multiple value files in the chart folder, ask which to use.
+`values-ci.yaml` is usually used for CI workflows.
 
 ```shell
 # Linting
@@ -66,20 +118,84 @@ Explains concepts, implementation details, decisions.
 
 Use semantic versioning.
 
-Bump the version:
-- major - when making breaking / backward incompatible changes - same values renders diff after upgrade
-- minor - when implementing new features - same values won't render any diff after upgrade
-- patch - when fixing something only / refactoring
+# Umbrella chart templates — using dependency helpers
 
-**Always bump `Chart.yaml` version automatically** after every change (feature, fix, refactor). Do not wait to be asked.
+**ALWAYS use dependency chart helpers for resource names and labels when adding extra templates
+to an umbrella chart.** Never write plain hardcoded names or labels.
+Ask User if and why you want to bypass this requirement.
+
+## Choosing which dependency to use helpers from
+
+When there are multiple dependencies in `Chart.yaml`, pick the one whose helpers match the
+resource being created:
+
+1. Read `Chart.yaml` — note each dependency's `name` and `alias`.
+2. Helper template names are prefixed with the chart **name** (not alias), e.g. `idp-app.fullname`.
+3. Inspect available helpers
+4. Use helpers from the dependency that owns the workload the extra resource belongs to.
+   - The `alias` determines which key to use for `Values` in the scoped context (see below).
+
+## Scoped context — calling helpers with aliased Values
+
+Dependency values are namespaced under the alias key (e.g. `.Values.app`). Pass the real
+Helm context deep-copied with `Values` swapped to the alias scope so that helpers — including
+those using `tpl` — receive everything they need:
+
+```yaml
+{{- $ctx := set (mustDeepCopy .) "Values" .Values.<alias> -}}
+```
+
+Then call any helper with `$ctx`:
+
+```yaml
+metadata:
+   name: {{ include "<chart>.fullname" $ctx }}-suffix
+   labels:
+      {{- include "<chart>.labels" $ctx | nindent 4 }}
+```
+
+## Keeping value references in sync with template names
+
+Whenever a value field supports `tpl`, use the helper expression there too — never hardcode
+a resource name as a plain string. This ensures the name is always derived from the same
+source of truth regardless of release name.
+
+```yaml
+# values.yaml — under the dependency alias key
+someField:
+   name: '{{ include "<chart>.fullname" . }}-suffix'
+```
+
+Inside a dependency's template, `tpl ... $` is called with the subchart's root context,
+so `.` inside the tpl string resolves to that subchart's context (same as `$ctx` in the
+umbrella template).
 
 # Dependencies
 
-Do NOT add repo to local helm repository
+**NEVER run `helm repo add` or `helm repo update`** — do not add or update repos locally.
+
+Use the full repo URL directly in all helm commands:
+
+```shell
+# get values.yaml
+helm show values <REPO-URL>/<CHART> --version <VERSION>
+
+# search for versions
+helm search repo <REPO-URL>/<CHART> --versions
+```
+
+When dependency repo is local reference `file://local-path`, use `/local-path` only instead in commands above.
+
+## Upgrading dependency version
+
+1. Check latest version
+2. Update version in `Chart.yaml`
+3. Run `helm dep update .`
+4. Lint and template to verify
 
 ## Adding new dependency
 
-When adding new dependency, you know exact:
+When adding new dependency, you MUST know:
 - repository
 - version
 - name
@@ -87,16 +203,23 @@ When adding new dependency, you know exact:
 
 ## Obtaining configuration/values options
 
-Prefer the below to understand configuration options:
+If a dependency chart is already downloaded as a `.tgz` in the `charts/` folder, use the local file directly — do NOT fetch from the remote URL:
 
 ```shell
-# get values.yaml
-helm show values <REPO>/<CHART>
-# get README.md
-helm show readme <REPO>/<CHART>
+# preferred: use local .tgz if available
+helm show values ./charts/<CHART>-<VERSION>.tgz
+helm show readme ./charts/<CHART>-<VERSION>.tgz
+
+# fallback: use full repo URL when no local .tgz exists
+helm show values <REPO-URL>/<CHART> --version <VERSION>
+helm show readme <REPO-URL>/<CHART> --version <VERSION>
 ```
 
-When dependency repo is local reference `file://local-path`, use `/local-path` only instead in commands above.
+**Prefer values and README documentation only.** Rely on `helm show values` and `helm show readme` as the primary source of truth for understanding a dependency chart's configuration.
+
+If values/README are insufficient to figure out the task (e.g. undocumented behaviour, complex template logic), MUST ask the user for permission to scan the full template implementation:
+
+> "I can't determine X from the values/README alone. Can I scan the full template sources of the `<CHART>` dependency to better understand the implementation?"
 
 # Tools
 
