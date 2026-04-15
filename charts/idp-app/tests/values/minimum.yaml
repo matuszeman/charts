@@ -49,6 +49,13 @@ global:
                   - 'Remote-Groups'
                   - 'Remote-Email'
                   - 'Remote-Name'
+        traefikEntryPoints:
+          websecure:
+            entryPoints:
+              - websecure
+            tls: {}
+            labelSelector:
+              traefik.io/controller: traefik-private
         nodePools:
           test1:
             nodeSelector:
@@ -67,6 +74,12 @@ global:
         pathType: PathPrefix
         annotations: { }
         #filters: [ ]
+        forwardAuth:
+          enabled: false
+      traefikIngressRoute:
+        enabled: false
+        pathType: PathPrefix
+        annotations: {}
         forwardAuth:
           enabled: false
       ingress:

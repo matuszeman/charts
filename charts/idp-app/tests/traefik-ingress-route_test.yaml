@@ -1,0 +1,124 @@
+suite: traefik-ingress-route
+templates:
+  - traefik-ingress-route.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should create IngressRoute
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: test
+          path: /
+          pathType: PathPrefix
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should create IngressRoute with Exact pathType
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: test
+          path: /exact
+          pathType: Exact
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should create IngressRoute with RegularExpression pathType
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: test
+          path: "/api/v[0-9]+"
+          pathType: RegularExpression
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when forwardAuth enabled, should add middleware and generate Middleware resource
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            appName: authelia
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when host is FQDN (no domain), should use host directly
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          host: myapp.example.com
+          path: /
+    asserts:
+      - matchSnapshot: {}
+
+  - it: multi support
+    values:
+      - values/multi.yaml
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: __DEPLOYMENT_ID__
+          path: /
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when domain key is missing from cluster config, should fail
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: nonexistent
+          path: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.idpAppConfig.clusters.test.domains.nonexistent is not defined"
+
+  - it: should support external service backend
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: test
+          path: /
+          service:
+            name: my-external-svc
+            port: 8080
+    asserts:
+      - matchSnapshot: {}

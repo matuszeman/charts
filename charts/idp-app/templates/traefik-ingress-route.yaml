@@ -1,0 +1,114 @@
+{{- if not $.Values.debug -}}
+{{- range $routeKey, $routeSpec := $.Values.traefikIngressRoutes }}
+{{- if $routeSpec.enabled }}
+{{- $route := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.traefikIngressRoute) (deepCopy $routeSpec) }}
+{{- $entryPoint := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "traefikEntryPoints" $route.entryPointName)) }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+{{- $backendRef := dict }}
+{{- if and $.Values.service.enabled $route.service }}
+{{- fail "traefikIngressRoute: both service.enabled and traefikIngressRoute.service is set" }}
+{{- else if $.Values.service.enabled }}
+{{- $backendRef = dict "name" $deploymentName "port" (default "app" $.Values.service.port) }}
+{{- else if $route.service }}
+{{- $backendRef = deepCopy $route.service }}
+{{- else }}
+{{- fail "traefikIngressRoute: service must be enabled" }}
+{{- end }}
+{{- $routeName := join "-" (compact (list $deploymentName $routeKey)) }}
+{{- $host := "" }}
+{{- if $route.domain }}
+{{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
+{{- $host = (include "idp-app.resolveHostFromDomain" (list $route.host $domain)) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- else }}
+{{- $host = ($route.host | required "traefikIngressRoute: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- end }}
+{{- $pathFunc := "" }}
+{{- $pathType := $route.pathType | default "PathPrefix" }}
+{{- if eq $pathType "PathPrefix" }}
+{{- $pathFunc = printf "PathPrefix(`%s`)" ($route.path | required "traefikIngressRoute: path required") }}
+{{- else if eq $pathType "Exact" }}
+{{- $pathFunc = printf "Path(`%s`)" ($route.path | required "traefikIngressRoute: path required") }}
+{{- else if eq $pathType "RegularExpression" }}
+{{- $pathFunc = printf "PathRegexp(`%s`)" ($route.path | required "traefikIngressRoute: path required") }}
+{{- else }}
+{{- fail (printf "traefikIngressRoute: unsupported pathType '%s'" $pathType) }}
+{{- end }}
+{{- $matchRule := printf "Host(`%s`) && %s" $host $pathFunc }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $routeName }}
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $entryPoint.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $route.annotations }}
+  annotations:
+    {{- toYaml $route.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  entryPoints:
+    {{- toYaml $entryPoint.entryPoints | nindent 4 }}
+  routes:
+    - match: {{ $matchRule }}
+      kind: Rule
+      services:
+        - name: {{ tpl ($backendRef.name | required "traefikIngressRoute: service.name required") $ | quote }}
+          port: {{ $backendRef.port | required "traefikIngressRoute: service.port required" }}
+      {{- $middlewareList := list }}
+      {{- if and $route.forwardAuth $route.forwardAuth.enabled }}
+      {{- $middlewareList = append $middlewareList (dict "name" (printf "%s-%s-forwardauth" (include "idp-app.fullname" $) $routeKey)) }}
+      {{- end }}
+      {{- range $route.middlewares }}
+      {{- $middlewareList = append $middlewareList . }}
+      {{- end }}
+      {{- if $middlewareList }}
+      middlewares:
+        {{- toYaml $middlewareList | nindent 8 }}
+      {{- end }}
+  {{- if kindIs "map" $entryPoint.tls }}
+  tls:
+    {{- if $entryPoint.tls }}
+    {{- toYaml $entryPoint.tls | nindent 4 }}
+    {{- end }}
+  {{- end }}
+---
+{{- end }}
+{{- if and $route.forwardAuth $route.forwardAuth.enabled }}
+{{- $forwardAuthApp := include "idp-app.clusterConfigMapValue" (list $ "apps" $route.forwardAuth.appName) | fromYaml }}
+{{- $traefikConfig := $forwardAuthApp.traefik.forwardAuthMiddleware | required "forwardAuth: app.traefik.forwardAuthMiddleware required" }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-forwardauth
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- with $entryPoint.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $route.annotations }}
+  annotations:
+    {{- toYaml $route.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  forwardAuth:
+    address: "{{ $traefikConfig.address }}{{ if $route.forwardAuth.allowedGroups }}?allowed_groups={{ join "," $route.forwardAuth.allowedGroups }}{{ end }}"
+    {{- if $traefikConfig.trustForwardHeader }}
+    trustForwardHeader: {{ $traefikConfig.trustForwardHeader }}
+    {{- end }}
+    {{- if $traefikConfig.authResponseHeaders }}
+    authResponseHeaders:
+      {{- toYaml $traefikConfig.authResponseHeaders | nindent 6 }}
+    {{- end }}
+    {{- if $traefikConfig.authRequestHeaders }}
+    authRequestHeaders:
+      {{- toYaml $traefikConfig.authRequestHeaders | nindent 6 }}
+    {{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

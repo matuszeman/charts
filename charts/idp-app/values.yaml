@@ -36,6 +36,13 @@
 #             name: http-public
 #             namespace: gateway
 #             labelSelector: {}       # Extra labels added to HTTPRoute/Middleware
+#         # Named Traefik Entry Points — referenced by traefikIngressRoutes.*.entryPointName
+#         traefikEntryPoints:
+#           websecure:
+#             entryPoints:
+#               - websecure
+#             tls: {}                    # TLS config for IngressRoute (empty = default cert)
+#             labelSelector: {}          # Extra labels added to IngressRoute/Middleware
 #         # Named apps — referenced by ingress.oauth2ProxyAuth.appName / httpRoutes.*.forwardAuth.appName
 #         apps:
 #           authelia:
@@ -76,6 +83,12 @@
 #         oauth2ProxyAuth:
 #           enabled: false
 #       httpRoute:
+#         enabled: false
+#         pathType: PathPrefix
+#         annotations: {}
+#         forwardAuth:
+#           enabled: false
+#       traefikIngressRoute:
 #         enabled: false
 #         pathType: PathPrefix
 #         annotations: {}
@@ -402,17 +415,26 @@ configs: {}
 #         db_host:   {{ .configSpec.values.dbHost }}
 #         log_level: {{ .configSpec.values.logLevel }}
 #
-#   # Inline Secret — templated: true works exactly the same way; values are
-#   # templated before base64-encoding.
+#   # Inline Secret (Opaque) — `secret: {}` is the only required field to distinguish
+#   # this from a ConfigMap. Values in `content` are stored as-is (the chart base64-encodes
+#   # them automatically; you must NOT pre-encode them).
 #   app-secrets:
 #     secret: {}          # secret: {} = Opaque; secret: {type: kubernetes.io/tls} for other types
+#                         # Note: sealedSecret and awsSecret take priority over secret: {type: Opaque}
+#     content:
+#       db_password: s3cr3t
+#       api_key: mykey
+#     # defaultMode: 0400   # Restrictive permissions recommended for secrets
+#     # restartPodOnUpdate: NameSuffix  # Append content hash to resource name (forces pod restart)
+#
+#   # Inline Secret with templated content — values are templated before base64-encoding.
+#   app-secrets-templated:
+#     secret: {}
 #     templated: true
 #     values:
 #       suffix: "{{ .Release.Name }}"
 #     content:
 #       db_password: "s3cr3t-{{ .configSpec.values.suffix }}"
-#     # defaultMode: 0400   # Restrictive permissions recommended for secrets
-#     # restartPodOnUpdate: NameSuffix  # Append content hash to resource name (forces pod restart)
 #
 #   # AWS Secrets Manager — pulls a secret via External Secrets Operator.
 #   # Does not support templated: true (no content rendered by the chart).
@@ -710,6 +732,58 @@ httpRoutes: {}
 #     #   enabled: true
 #     #   appName: authelia            # Named app from clusters.<cluster>.apps
 #     #   allowedGroups: ["admins"]    # Optional group restriction
+
+# ---------------------------------------------------------------------------
+# Traefik IngressRoutes (traefik.io/v1alpha1)
+# ---------------------------------------------------------------------------
+
+# traefikIngressRoutes — Map of Traefik IngressRoute definitions.
+# Merged with global.idpAppConfig.defaults.traefikIngressRoute.
+# Note: service.enabled must be true (or traefikIngressRoute.service must be set).
+#
+# multi support: when deployment.multi is set, one IngressRoute is created per deployment.
+# Use __DEPLOYMENT_ID__ in host to inject the deployment key into the hostname:
+#   host: __DEPLOYMENT_ID__  →  one.example.com, two.example.com (for multi keys "one", "two")
+traefikIngressRoutes: {}
+# Example IngressRoute configuration:
+# traefikIngressRoutes:
+#   public:
+#     enabled: true
+#     entryPointName: websecure          # [required] Named entry point from clusters.<cluster>.traefikEntryPoints
+#
+#     # Host resolution (same as httpRoutes — domain + host, or host alone):
+#     domain: example.com
+#     host: my-app                       # Results in my-app.example.com
+#     # host: my-app.example.com         # Without domain: used as full FQDN directly
+#
+#     # Domain values may contain a generic <HOST{sep}> placeholder to control separator and position.
+#     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
+#     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
+#
+#     # __DEPLOYMENT_ID__ placeholder (for deployment.multi):
+#     # host: __DEPLOYMENT_ID__          # replaced with each deployment key → one.example.com, two.example.com
+#
+#     path: /                            # [required] URL path to match
+#     pathType: PathPrefix               # PathPrefix | Exact | RegularExpression
+#
+#     annotations: {}                    # Annotations added to the IngressRoute resource
+#
+#     # Extra Traefik middlewares (appended after forwardAuth if enabled)
+#     # middlewares:
+#     #   - name: my-middleware
+#
+#     # External / override service backend.
+#     # Use when service.enabled is false and you want to route to an existing Service.
+#     # Mutually exclusive with service.enabled — setting both causes a template error.
+#     # service:
+#     #   name: my-external-svc          # [required] Name of the target Service (supports tpl)
+#     #   port: 8080                     # [required] Service port number
+#
+#     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically)
+#     # forwardAuth:
+#     #   enabled: true
+#     #   appName: authelia              # Named app from clusters.<cluster>.apps
+#     #   allowedGroups: ["admins"]      # Optional group restriction
 
 # ---------------------------------------------------------------------------
 # Autoscaling (HorizontalPodAutoscaler)
