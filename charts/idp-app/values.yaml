@@ -41,8 +41,8 @@
 #           websecure:
 #             entryPoints:
 #               - websecure
-#             tls: {}                    # TLS config for IngressRoute (empty = default cert)
-#             labelSelector: {}          # Extra labels added to IngressRoute/Middleware
+#             labelSelector: {}          # Extra labels added to IngressRoute/Middleware/TLSOption
+#             annotationSelector: {}     # Extra annotations added to IngressRoute/Middleware/TLSOption
 #         # Named apps — referenced by ingress.oauth2ProxyAuth.appName / httpRoutes.*.forwardAuth.appName
 #         apps:
 #           authelia:
@@ -91,6 +91,8 @@
 #       traefikIngressRoute:
 #         enabled: false
 #         pathType: PathPrefix
+#         tls:
+#           secretName: wildcard-tls    # Name of Secret containing the TLS certificate
 #         annotations: {}
 #         forwardAuth:
 #           enabled: false
@@ -765,6 +767,32 @@ traefikIngressRoutes: {}
 #
 #     path: /                            # [required] URL path to match
 #     pathType: PathPrefix               # PathPrefix | Exact | RegularExpression
+#
+#     tls:                                # TLS config for IngressRoute
+#       secretName: wildcard-tls         # Name of Secret containing the TLS certificate
+#
+#     # tlsOption — generates a TLSOption resource and auto-references it in IngressRoute tls.options
+#     # tlsOption:
+#     #   minVersion: VersionTLS12
+#     #   maxVersion: VersionTLS13
+#     #   sniStrict: true
+#     #   cipherSuites:
+#     #     - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+#     #   curvePreferences:
+#     #     - CurveP256
+#     #   clientAuth:
+#     #     clientAuthType: VerifyClientCertIfGiven
+#     #     secretNames:                    # Reference pre-existing secrets
+#     #       - existing-secret
+#     #     secrets:                        # Auto-generate secrets from inline CA data
+#     #       ca1:                          # (creates Secret + populates secretNames automatically)
+#     #         ca.crt: |
+#     #           -----BEGIN CERTIFICATE-----
+#     #           ...
+#     #           -----END CERTIFICATE-----
+#     #   alpnProtocols:
+#     #     - h2
+#     #     - http/1.1
 #
 #     annotations: {}                    # Annotations added to the IngressRoute resource
 #

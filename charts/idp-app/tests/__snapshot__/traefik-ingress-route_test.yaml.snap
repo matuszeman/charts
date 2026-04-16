@@ -3,6 +3,8 @@ multi support:
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-one
         app.kubernetes.io/managed-by: Helm
@@ -19,11 +21,14 @@ multi support:
           services:
             - name: RELEASE-NAME-one
               port: 80
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
   2: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-two
         app.kubernetes.io/managed-by: Helm
@@ -40,12 +45,15 @@ multi support:
           services:
             - name: RELEASE-NAME-two
               port: 80
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
 should create IngressRoute:
   1: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
@@ -62,12 +70,15 @@ should create IngressRoute:
           services:
             - name: RELEASE-NAME
               port: 80
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
 should create IngressRoute with Exact pathType:
   1: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
@@ -84,12 +95,15 @@ should create IngressRoute with Exact pathType:
           services:
             - name: RELEASE-NAME
               port: 80
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
 should create IngressRoute with RegularExpression pathType:
   1: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
@@ -106,12 +120,15 @@ should create IngressRoute with RegularExpression pathType:
           services:
             - name: RELEASE-NAME
               port: 80
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
 should support external service backend:
   1: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
@@ -128,12 +145,15 @@ should support external service backend:
           services:
             - name: my-external-svc
               port: 8080
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
 when forwardAuth enabled, should add middleware and generate Middleware resource:
   1: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
@@ -152,11 +172,14 @@ when forwardAuth enabled, should add middleware and generate Middleware resource
           services:
             - name: RELEASE-NAME
               port: 80
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
   2: |
     apiVersion: traefik.io/v1alpha1
     kind: Middleware
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
@@ -178,6 +201,8 @@ when host is FQDN (no domain), should use host directly:
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-private
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
@@ -194,4 +219,121 @@ when host is FQDN (no domain), should use host directly:
           services:
             - name: RELEASE-NAME
               port: 80
-      tls: null
+      tls:
+        secretName: wildcard-example-com-tls
+when tlsOption clientAuth uses only secretNames, should reference existing secrets:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/`)
+          services:
+            - name: RELEASE-NAME
+              port: 80
+      tls:
+        options:
+          name: RELEASE-NAME-public
+        secretName: wildcard-example-com-tls
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: TLSOption
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-public
+    spec:
+      clientAuth:
+        clientAuthType: VerifyClientCertIfGiven
+        secretNames:
+          - existing-ca-secret
+          - another-ca-secret
+      minVersion: VersionTLS12
+when tlsOption is set, should generate TLSOption and reference it in IngressRoute:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/`)
+          services:
+            - name: RELEASE-NAME
+              port: 80
+      tls:
+        options:
+          name: RELEASE-NAME-public
+        secretName: wildcard-example-com-tls
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: TLSOption
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-public
+    spec:
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      clientAuth:
+        clientAuthType: VerifyClientCertIfGiven
+        secretNames:
+          - RELEASE-NAME-public-mtls-ca1
+      maxVersion: VersionTLS13
+      minVersion: VersionTLS12
+      sniStrict: true
+  3: |
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-public-mtls-ca1
+    stringData:
+      ca.crt: |
+        -----BEGIN CERTIFICATE-----
+        MIIBkTCB+wIJAL2BqG0EXAMPLE
+        -----END CERTIFICATE-----
+    type: Opaque

@@ -108,6 +108,55 @@ tests:
       - failedTemplate:
           errorMessage: "global.idpAppConfig.clusters.test.domains.nonexistent is not defined"
 
+  - it: when tlsOption is set, should generate TLSOption and reference it in IngressRoute
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: test
+          path: /
+          tlsOption:
+            minVersion: VersionTLS12
+            maxVersion: VersionTLS13
+            sniStrict: true
+            cipherSuites:
+              - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+            clientAuth:
+              clientAuthType: VerifyClientCertIfGiven
+              secrets:
+                ca1:
+                  ca.crt: |
+                    -----BEGIN CERTIFICATE-----
+                    MIIBkTCB+wIJAL2BqG0EXAMPLE
+                    -----END CERTIFICATE-----
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when tlsOption clientAuth uses only secretNames, should reference existing secrets
+    values:
+      - values/service.yaml
+    set:
+      traefikIngressRoutes:
+        public:
+          enabled: true
+          entryPointName: websecure
+          domain: example.com
+          host: test
+          path: /
+          tlsOption:
+            minVersion: VersionTLS12
+            clientAuth:
+              clientAuthType: VerifyClientCertIfGiven
+              secretNames:
+                - existing-ca-secret
+                - another-ca-secret
+    asserts:
+      - matchSnapshot: {}
+
   - it: should support external service backend
     set:
       traefikIngressRoutes:

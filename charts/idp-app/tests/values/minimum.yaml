@@ -53,8 +53,9 @@ global:
           websecure:
             entryPoints:
               - websecure
-            tls: {}
             labelSelector:
+              traefik.io/controller: traefik-private
+            annotationSelector:
               traefik.io/controller: traefik-private
         nodePools:
           test1:
@@ -79,6 +80,8 @@ global:
       traefikIngressRoute:
         enabled: false
         pathType: PathPrefix
+        tls:
+          secretName: wildcard-example-com-tls
         annotations: {}
         forwardAuth:
           enabled: false
