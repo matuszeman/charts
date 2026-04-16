@@ -1,0 +1,197 @@
+suite: traefik-ingress-route
+templates:
+  - traefik-ingress-route.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: should create IngressRoute
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          pathType: PathPrefix
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should create IngressRoute with Exact pathType
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /exact
+          pathType: Exact
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should create IngressRoute with RegularExpression pathType
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: "/api/v[0-9]+"
+          pathType: RegularExpression
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when forwardAuth enabled, should add middleware and generate Middleware resource
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            appName: authelia
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when host is FQDN (no domain), should use host directly
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          host: myapp.example.com
+          path: /
+    asserts:
+      - matchSnapshot: {}
+
+  - it: multi support
+    values:
+      - values/multi.yaml
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: __DEPLOYMENT_ID__
+          path: /
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when domain key is missing from cluster config, should fail
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: nonexistent
+          path: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "global.idpAppConfig.clusters.test.domains.nonexistent is not defined"
+
+  - it: when gateway controller is not traefik, should fail
+    values:
+      - values/service.yaml
+    set:
+      global:
+        idpAppConfig:
+          clusters:
+            test:
+              httpGateways:
+                http-public:
+                  controller: istio
+                  name: http-public
+                  namespace: dev-gateway
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingressRoute: gateway 'http-public' has controller 'istio', only 'traefik' is supported"
+
+  - it: when tlsOption is set, should generate TLSOption and reference it in IngressRoute
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          tlsOption:
+            minVersion: VersionTLS12
+            maxVersion: VersionTLS13
+            sniStrict: true
+            cipherSuites:
+              - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+            clientAuth:
+              clientAuthType: VerifyClientCertIfGiven
+              secrets:
+                ca1:
+                  ca.crt: |
+                    -----BEGIN CERTIFICATE-----
+                    MIIBkTCB+wIJAL2BqG0EXAMPLE
+                    -----END CERTIFICATE-----
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when tlsOption clientAuth uses only secretNames, should reference existing secrets
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          tlsOption:
+            minVersion: VersionTLS12
+            clientAuth:
+              clientAuthType: VerifyClientCertIfGiven
+              secretNames:
+                - existing-ca-secret
+                - another-ca-secret
+    asserts:
+      - matchSnapshot: {}
+
+  - it: should support external service backend
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          service:
+            name: my-external-svc
+            port: 8080
+    asserts:
+      - matchSnapshot: {}

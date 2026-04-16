@@ -8,9 +8,3 @@ A general-purpose Helm chart for deploying any Kubernetes workload — Deploymen
 It is designed to be used directly or as a dependency inside an umbrella chart.
 
 [Read more](charts/idp-app/README.md)
-
-# AI Agents
-
-## Skills
-
-* [helm-chart-developer](https://github.com/matuszeman/agents/tree/main/skills/helm-chart-developer)

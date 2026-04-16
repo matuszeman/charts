@@ -50,6 +50,14 @@ httpRoutes:
     host: __DEPLOYMENT_ID__
     path: /
 
+ingressRoutes:
+  public:
+    enabled: true
+    gatewayName: http-public
+    domain: example.com
+    host: __DEPLOYMENT_ID__
+    path: /
+
 # ---------------------------------------------------------------------------
 # Shared container spec — inherited by all entries in deployment.multi
 # ---------------------------------------------------------------------------

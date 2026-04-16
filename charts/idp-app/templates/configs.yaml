@@ -7,8 +7,6 @@
 {{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) }}
 {{- $mergedAnnotations := merge (dict) $defaultsConfigsAnnotations (default $configSpec.annotations dict) }}
 {{- if or .fromSecret .fromConfigMap .fromFolder }}
-{{- else if (kindIs "map" .secret) }}
-{{ include "idp-app.renderConfigFromContent" (list $ $configKey $configSpec) }}
 {{- else if .sealedSecret }}
 {{- with .sealedSecret }}
 ---
@@ -77,8 +75,10 @@ spec:
         version: uuid/{{ . | toString }}
         {{- end }}
 {{- end }}
+{{- else if (kindIs "map" .secret) }}
+{{ include "idp-app.renderConfigFromContent" (list $ $configKey $configSpec) }}
 {{- else }}
-{{- $_ := required (printf "configs.%s.content required (or set .fromSecret, .fromConfigMap, .fromFolder)" $configKey) .content }}
+{{- $_ := required (printf "configs.%s.content required (or set .fromSecret, .fromConfigMap, .fromFolder, .secret, .sealedSecret, .awsSecret)" $configKey) .content }}
 {{ include "idp-app.renderConfigFromContent" (list $ $configKey $configSpec) }}
 {{- end }}
 {{- end }}

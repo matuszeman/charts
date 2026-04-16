@@ -29,6 +29,10 @@ global:
             controller: traefik
             name: http-public
             namespace: gateway
+            entryPoints:
+              - websecure
+            labelSelector: {}
+            annotationSelector: {}
         apps:
           authelia:
             traefik:
@@ -53,6 +57,14 @@ global:
       httpRoute:
         enabled: false
         pathType: PathPrefix
+        forwardAuth:
+          enabled: false
+      ingressRoute:
+        enabled: false
+        pathType: PathPrefix
+        tls:
+          secretName: wildcard-tls
+        annotations: {}
         forwardAuth:
           enabled: false
       configs:
@@ -145,6 +157,14 @@ ingress:
   host: my-app         # results in my-app.example.com
 
 httpRoutes:
+  public:
+    enabled: true
+    gatewayName: http-public
+    domain: public
+    host: my-app
+    path: /
+
+ingressRoutes:
   public:
     enabled: true
     gatewayName: http-public

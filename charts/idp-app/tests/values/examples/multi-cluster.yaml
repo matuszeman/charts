@@ -32,6 +32,8 @@ global:
             controller: traefik
             name: http-public
             namespace: gateway
+            entryPoints:
+              - websecure
         apps:
           authelia:
             traefik:
@@ -56,6 +58,8 @@ global:
             controller: traefik
             name: http-public
             namespace: gateway
+            entryPoints:
+              - websecure
 
 # ---------------------------------------------------------------------------
 # App chart values — these stay identical across clusters

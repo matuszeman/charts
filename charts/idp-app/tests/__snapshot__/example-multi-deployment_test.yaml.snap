@@ -400,3 +400,75 @@ should match snapshot:
         app.kubernetes.io/instance: RELEASE-NAME-worker
         app.kubernetes.io/name: my-app
       type: ClusterIP
+  13: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-api
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-api-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`api.example.com`) && PathPrefix(`/`)
+          services:
+            - name: RELEASE-NAME-api
+              port: 80
+      tls:
+        secretName: wildcard-example-com-tls
+  14: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-scheduler
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-scheduler-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`scheduler.example.com`) && PathPrefix(`/`)
+          services:
+            - name: RELEASE-NAME-scheduler
+              port: 80
+      tls:
+        secretName: wildcard-example-com-tls
+  15: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME-worker
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.0.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-worker-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`worker.example.com`) && PathPrefix(`/`)
+          services:
+            - name: RELEASE-NAME-worker
+              port: 80
+      tls:
+        secretName: wildcard-example-com-tls
