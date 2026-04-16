@@ -77,7 +77,7 @@ global:
         enabled: false
         pathType: PathPrefix
         tls:
-          secretName: wildcard-example-com-tls
+          secretName: '{{ include "idp-app.fullname" . }}-tls'
         annotations: {}
         forwardAuth:
           enabled: false

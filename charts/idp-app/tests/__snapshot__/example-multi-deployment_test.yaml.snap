@@ -423,7 +423,7 @@ should match snapshot:
             - name: RELEASE-NAME-api
               port: 80
       tls:
-        secretName: wildcard-example-com-tls
+        secretName: RELEASE-NAME-tls
   14: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
@@ -447,7 +447,7 @@ should match snapshot:
             - name: RELEASE-NAME-scheduler
               port: 80
       tls:
-        secretName: wildcard-example-com-tls
+        secretName: RELEASE-NAME-tls
   15: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
@@ -471,4 +471,4 @@ should match snapshot:
             - name: RELEASE-NAME-worker
               port: 80
       tls:
-        secretName: wildcard-example-com-tls
+        secretName: RELEASE-NAME-tls

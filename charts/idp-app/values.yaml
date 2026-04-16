@@ -88,7 +88,7 @@
 #         enabled: false
 #         pathType: PathPrefix
 #         tls:
-#           secretName: wildcard-tls    # Name of Secret containing the TLS certificate
+#           secretName: my-tls-secret    # [required] Name of Secret containing the TLS certificate (supports tpl)
 #         annotations: {}
 #         forwardAuth:
 #           enabled: false
@@ -414,8 +414,9 @@ configs: {}
 #         log_level: {{ .configSpec.values.logLevel }}
 #
 #   # Inline Secret (Opaque) — `secret: {}` is the only required field to distinguish
-#   # this from a ConfigMap. Values in `content` are stored as-is (the chart base64-encodes
-#   # them automatically; you must NOT pre-encode them).
+#   # this from a ConfigMap. `content` is optional — omitting it creates an empty Secret.
+#   # Values in `content` are stored as-is (the chart base64-encodes them automatically;
+#   # you must NOT pre-encode them).
 #   app-secrets:
 #     secret: {}          # secret: {} = Opaque; secret: {type: kubernetes.io/tls} for other types
 #                         # Note: sealedSecret and awsSecret take priority over secret: {type: Opaque}
@@ -424,6 +425,8 @@ configs: {}
 #       api_key: mykey
 #     # defaultMode: 0400   # Restrictive permissions recommended for secrets
 #     # restartPodOnUpdate: NameSuffix  # Append content hash to resource name (forces pod restart)
+#     # labels: {}          # Extra labels on the Secret resource
+#     # annotations: {}     # Extra annotations on the Secret resource
 #
 #   # Inline Secret with templated content — values are templated before base64-encoding.
 #   app-secrets-templated:
@@ -442,6 +445,8 @@ configs: {}
 #       versionId: a1b2c3d4-5678-90ab-cdef-EXAMPLE22222  # Optional; omit for AWSCURRENT
 #     # valuesHash: abc123   # Manual hash override (useful when arn/versionId don't change)
 #     # restartPodOnUpdate: NameSuffix
+#     # labels: {}          # Extra labels on the ExternalSecret/Secret resource
+#     # annotations: {}     # Extra annotations on the ExternalSecret/Secret resource
 #
 #   # SealedSecret — Bitnami sealed-secrets controller decrypts this at runtime.
 #   # Does not support templated: true (encrypted data cannot be rendered by the chart).
@@ -450,6 +455,8 @@ configs: {}
 #       encryptedData:
 #         db_password: AgBy3i4OJSWK...
 #       # scope: cluster-wide  # Optional: cluster-wide | namespace-wide (default: strict)
+#     # labels: {}          # Extra labels on the SealedSecret resource
+#     # annotations: {}     # Extra annotations on the SealedSecret resource
 #
 #   # Reference an existing ConfigMap — the reference string is always rendered through
 #   # tpl (no flag needed). No content is created; `templated: true` has no effect here.
@@ -765,7 +772,7 @@ ingressRoutes: {}
 #     pathType: PathPrefix               # PathPrefix | Exact | RegularExpression
 #
 #     tls:                                # TLS config for IngressRoute
-#       secretName: wildcard-tls         # Name of Secret containing the TLS certificate
+#       secretName: my-tls-secret         # [required] Name of Secret containing the TLS certificate (supports tpl)
 #
 #     # tlsOption — generates a TLSOption resource and auto-references it in IngressRoute tls.options
 #     # tlsOption:
@@ -778,14 +785,9 @@ ingressRoutes: {}
 #     #     - CurveP256
 #     #   clientAuth:
 #     #     clientAuthType: VerifyClientCertIfGiven
-#     #     secretNames:                    # Reference pre-existing secrets
-#     #       - existing-secret
-#     #     secrets:                        # Auto-generate secrets from inline CA data
-#     #       ca1:                          # (creates Secret + populates secretNames automatically)
-#     #         ca.crt: |
-#     #           -----BEGIN CERTIFICATE-----
-#     #           ...
-#     #           -----END CERTIFICATE-----
+#     #     secretNames:                    # Names of Secrets containing CA certificates (supports tpl)
+#     #       - '{{ include "idp-app.fullname" . }}-config-mtls-ca'  # Reference a configs-created secret
+#     #       - my-existing-ca-secret      # Or reference a pre-existing secret
 #     #   alpnProtocols:
 #     #     - h2
 #     #     - http/1.1
