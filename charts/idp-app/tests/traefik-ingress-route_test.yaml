@@ -151,12 +151,8 @@ tests:
               - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
             clientAuth:
               clientAuthType: VerifyClientCertIfGiven
-              secrets:
-                ca1:
-                  ca.crt: |
-                    -----BEGIN CERTIFICATE-----
-                    MIIBkTCB+wIJAL2BqG0EXAMPLE
-                    -----END CERTIFICATE-----
+              secretNames:
+                - '{{ include "idp-app.fullname" . }}-config-mtls-ca'
     asserts:
       - matchSnapshot: {}
 

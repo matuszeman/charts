@@ -79,14 +79,13 @@ spec:
         {{- toYaml $middlewareList | nindent 8 }}
       {{- end }}
   {{- if kindIs "map" $route.tls }}
+  {{- $_ := $route.tls.secretName | required "ingressRoute: tls.secretName is required" }}
   tls:
     {{- if $route.tlsOption }}
     options:
       name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}
     {{- end }}
-    {{- if $route.tls }}
-    {{- toYaml $route.tls | nindent 4 }}
-    {{- end }}
+    secretName: {{ tpl $route.tls.secretName $ | quote }}
   {{- end }}
 ---
 {{- end }}
@@ -129,17 +128,12 @@ spec:
 {{- end }}
 {{- if $route.tlsOption }}
 {{- $tlsOptionSpec := deepCopy $route.tlsOption }}
-{{- $clientAuthSecrets := dict }}
-{{- if and $tlsOptionSpec.clientAuth $tlsOptionSpec.clientAuth.secrets }}
-{{- $clientAuthSecrets = $tlsOptionSpec.clientAuth.secrets }}
-{{- $clientAuth := deepCopy $tlsOptionSpec.clientAuth }}
-{{- $_ := unset $clientAuth "secrets" }}
-{{- $secretNames := default list $clientAuth.secretNames }}
-{{- range $secretKey, $secretData := $clientAuthSecrets }}
-{{- $secretNames = append $secretNames (printf "%s-%s-mtls-%s" (include "idp-app.fullname" $) $routeKey $secretKey) }}
+{{- if and $tlsOptionSpec.clientAuth $tlsOptionSpec.clientAuth.secretNames }}
+{{- $resolvedNames := list }}
+{{- range $tlsOptionSpec.clientAuth.secretNames }}
+{{- $resolvedNames = append $resolvedNames (tpl . $) }}
 {{- end }}
-{{- $_ := set $clientAuth "secretNames" $secretNames }}
-{{- $_ := set $tlsOptionSpec "clientAuth" $clientAuth }}
+{{- $_ := set $tlsOptionSpec.clientAuth "secretNames" $resolvedNames }}
 {{- end }}
 apiVersion: traefik.io/v1alpha1
 kind: TLSOption
@@ -162,30 +156,6 @@ metadata:
 spec:
   {{- toYaml $tlsOptionSpec | nindent 2 }}
 ---
-{{- range $secretKey, $secretData := $clientAuthSecrets }}
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-mtls-{{ $secretKey }}
-  labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
-    {{- with $gateway.labelSelector }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- if or $route.annotations $gateway.annotationSelector }}
-  annotations:
-    {{- with $gateway.annotationSelector }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $route.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- end }}
-type: Opaque
-stringData:
-  {{- toYaml $secretData | nindent 2 }}
----
-{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
