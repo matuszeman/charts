@@ -415,6 +415,33 @@ tests:
           value: kubernetes.io/basic-auth
         template: configs.yaml
         documentIndex: 0
+  - it: when secret with Opaque type and sealedSecret are both set, sealedSecret takes priority
+    set:
+      configs:
+        sealed-opaque:
+          secret: {}
+          sealedSecret:
+            encryptedData:
+              db_password: AgBy3i4OJSWK
+    asserts:
+      - equal:
+          path: kind
+          value: SealedSecret
+        template: configs.yaml
+        documentIndex: 0
+  - it: when secret with Opaque type and awsSecret are both set, awsSecret takes priority
+    set:
+      configs:
+        aws-opaque:
+          secret: {}
+          awsSecret:
+            arn: arn:aws:iam::123456789012:role/external-secrets
+    asserts:
+      - equal:
+          path: kind
+          value: ExternalSecret
+        template: configs.yaml
+        documentIndex: 0
   - it: when not templated cm, should not call tpl function
     set:
       configs:
