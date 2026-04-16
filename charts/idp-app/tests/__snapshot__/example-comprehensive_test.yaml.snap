@@ -331,3 +331,24 @@ should match snapshot:
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.2.3
       name: RELEASE-NAME
+  12: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: my-app
+        app.kubernetes.io/version: 1.2.3
+      name: RELEASE-NAME-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`my-app.example.com`) && PathPrefix(`/`)
+          services:
+            - name: RELEASE-NAME
+              port: 80
+      tls:
+        secretName: wildcard-tls

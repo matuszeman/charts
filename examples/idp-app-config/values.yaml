@@ -14,8 +14,12 @@ global:
             name: http-public
             namespace: dev-gateway
             controller: traefik
+            entryPoints:
+              - websecure
             # traefik can be deployed on cluster multiple times, where it uses label selector to select only specific resources (e.g. middleware) that belong to it
             labelSelector:
+              traefik.io/controller: traefik-private
+            annotationSelector:
               traefik.io/controller: traefik-private
         apps:
           oauth2proxy:

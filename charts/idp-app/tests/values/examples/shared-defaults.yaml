@@ -39,6 +39,15 @@ global:
         forwardAuth:
           enabled: false
 
+      # Default Traefik IngressRoute settings
+      ingressRoute:
+        enabled: false
+        pathType: PathPrefix
+        tls:
+          secretName: wildcard-tls
+        forwardAuth:
+          enabled: false
+
       # Default config resource settings
       configs:
         externalSecret:
