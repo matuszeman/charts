@@ -29,20 +29,16 @@
 #                 operator: Equal
 #                 value: worker
 #                 effect: NoSchedule
-#         # Named HTTP Gateways — referenced by httpRoutes.*.gatewayName
+#         # Named HTTP Gateways — referenced by httpRoutes.*.gatewayName / ingressRoutes.*.gatewayName
 #         httpGateways:
 #           http-public:
 #             controller: traefik     # Only "traefik" is currently supported for forwardAuth
 #             name: http-public
 #             namespace: gateway
-#             labelSelector: {}       # Extra labels added to HTTPRoute/Middleware
-#         # Named Traefik Entry Points — referenced by traefikIngressRoutes.*.entryPointName
-#         traefikEntryPoints:
-#           websecure:
-#             entryPoints:
+#             entryPoints:            # Traefik entry points (used by ingressRoutes)
 #               - websecure
-#             labelSelector: {}          # Extra labels added to IngressRoute/Middleware/TLSOption
-#             annotationSelector: {}     # Extra annotations added to IngressRoute/Middleware/TLSOption
+#             labelSelector: {}       # Extra labels added to HTTPRoute/IngressRoute/Middleware/TLSOption
+#             annotationSelector: {}  # Extra annotations added to IngressRoute/Middleware/TLSOption
 #         # Named apps — referenced by ingress.oauth2ProxyAuth.appName / httpRoutes.*.forwardAuth.appName
 #         apps:
 #           authelia:
@@ -88,7 +84,7 @@
 #         annotations: {}
 #         forwardAuth:
 #           enabled: false
-#       traefikIngressRoute:
+#       ingressRoute:
 #         enabled: false
 #         pathType: PathPrefix
 #         tls:
@@ -739,19 +735,19 @@ httpRoutes: {}
 # Traefik IngressRoutes (traefik.io/v1alpha1)
 # ---------------------------------------------------------------------------
 
-# traefikIngressRoutes — Map of Traefik IngressRoute definitions.
-# Merged with global.idpAppConfig.defaults.traefikIngressRoute.
-# Note: service.enabled must be true (or traefikIngressRoute.service must be set).
+# ingressRoutes — Map of Traefik IngressRoute definitions.
+# Merged with global.idpAppConfig.defaults.ingressRoute.
+# Note: service.enabled must be true (or ingressRoute.service must be set).
 #
 # multi support: when deployment.multi is set, one IngressRoute is created per deployment.
 # Use __DEPLOYMENT_ID__ in host to inject the deployment key into the hostname:
 #   host: __DEPLOYMENT_ID__  →  one.example.com, two.example.com (for multi keys "one", "two")
-traefikIngressRoutes: {}
+ingressRoutes: {}
 # Example IngressRoute configuration:
-# traefikIngressRoutes:
+# ingressRoutes:
 #   public:
 #     enabled: true
-#     entryPointName: websecure          # [required] Named entry point from clusters.<cluster>.traefikEntryPoints
+#     gatewayName: http-public            # [required] Named gateway from clusters.<cluster>.httpGateways
 #
 #     # Host resolution (same as httpRoutes — domain + host, or host alone):
 #     domain: example.com

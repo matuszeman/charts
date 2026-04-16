@@ -1,20 +1,24 @@
 {{- if not $.Values.debug -}}
-{{- range $routeKey, $routeSpec := $.Values.traefikIngressRoutes }}
+{{- range $routeKey, $routeSpec := $.Values.ingressRoutes }}
 {{- if $routeSpec.enabled }}
-{{- $route := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.traefikIngressRoute) (deepCopy $routeSpec) }}
-{{- $entryPoint := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "traefikEntryPoints" $route.entryPointName)) }}
+{{- $route := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.ingressRoute) (deepCopy $routeSpec) }}
+{{- $gateway := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $route.gatewayName)) }}
+{{- $gatewayController := $gateway.controller | required "global.idpAppConfig.httpGateways.NAME.controller required" }}
+{{- if ne $gatewayController "traefik" }}
+{{- fail (printf "ingressRoute: gateway '%s' has controller '%s', only 'traefik' is supported" $route.gatewayName $gatewayController) }}
+{{- end }}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 {{- $backendRef := dict }}
 {{- if and $.Values.service.enabled $route.service }}
-{{- fail "traefikIngressRoute: both service.enabled and traefikIngressRoute.service is set" }}
+{{- fail "ingressRoute: both service.enabled and ingressRoute.service is set" }}
 {{- else if $.Values.service.enabled }}
 {{- $backendRef = dict "name" $deploymentName "port" (default "app" $.Values.service.port) }}
 {{- else if $route.service }}
 {{- $backendRef = deepCopy $route.service }}
 {{- else }}
-{{- fail "traefikIngressRoute: service must be enabled" }}
+{{- fail "ingressRoute: service must be enabled" }}
 {{- end }}
 {{- $routeName := join "-" (compact (list $deploymentName $routeKey)) }}
 {{- $host := "" }}
@@ -22,18 +26,18 @@
 {{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
 {{- $host = (include "idp-app.resolveHostFromDomain" (list $route.host $domain)) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- else }}
-{{- $host = ($route.host | required "traefikIngressRoute: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- $host = ($route.host | required "ingressRoute: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- end }}
 {{- $pathFunc := "" }}
 {{- $pathType := $route.pathType | default "PathPrefix" }}
 {{- if eq $pathType "PathPrefix" }}
-{{- $pathFunc = printf "PathPrefix(`%s`)" ($route.path | required "traefikIngressRoute: path required") }}
+{{- $pathFunc = printf "PathPrefix(`%s`)" ($route.path | required "ingressRoute: path required") }}
 {{- else if eq $pathType "Exact" }}
-{{- $pathFunc = printf "Path(`%s`)" ($route.path | required "traefikIngressRoute: path required") }}
+{{- $pathFunc = printf "Path(`%s`)" ($route.path | required "ingressRoute: path required") }}
 {{- else if eq $pathType "RegularExpression" }}
-{{- $pathFunc = printf "PathRegexp(`%s`)" ($route.path | required "traefikIngressRoute: path required") }}
+{{- $pathFunc = printf "PathRegexp(`%s`)" ($route.path | required "ingressRoute: path required") }}
 {{- else }}
-{{- fail (printf "traefikIngressRoute: unsupported pathType '%s'" $pathType) }}
+{{- fail (printf "ingressRoute: unsupported pathType '%s'" $pathType) }}
 {{- end }}
 {{- $matchRule := printf "Host(`%s`) && %s" $host $pathFunc }}
 apiVersion: traefik.io/v1alpha1
@@ -42,12 +46,12 @@ metadata:
   name: {{ $routeName }}
   labels:
     {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
-    {{- with $entryPoint.labelSelector }}
+    {{- with $gateway.labelSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if or $route.annotations $entryPoint.annotationSelector }}
+  {{- if or $route.annotations $gateway.annotationSelector }}
   annotations:
-    {{- with $entryPoint.annotationSelector }}
+    {{- with $gateway.annotationSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with $route.annotations }}
@@ -56,13 +60,13 @@ metadata:
   {{- end }}
 spec:
   entryPoints:
-    {{- toYaml $entryPoint.entryPoints | nindent 4 }}
+    {{- toYaml $gateway.entryPoints | nindent 4 }}
   routes:
     - match: {{ $matchRule }}
       kind: Rule
       services:
-        - name: {{ tpl ($backendRef.name | required "traefikIngressRoute: service.name required") $ | quote }}
-          port: {{ $backendRef.port | required "traefikIngressRoute: service.port required" }}
+        - name: {{ tpl ($backendRef.name | required "ingressRoute: service.name required") $ | quote }}
+          port: {{ $backendRef.port | required "ingressRoute: service.port required" }}
       {{- $middlewareList := list }}
       {{- if and $route.forwardAuth $route.forwardAuth.enabled }}
       {{- $middlewareList = append $middlewareList (dict "name" (printf "%s-%s-forwardauth" (include "idp-app.fullname" $) $routeKey)) }}
@@ -95,12 +99,12 @@ metadata:
   name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-forwardauth
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
-    {{- with $entryPoint.labelSelector }}
+    {{- with $gateway.labelSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if or $route.annotations $entryPoint.annotationSelector }}
+  {{- if or $route.annotations $gateway.annotationSelector }}
   annotations:
-    {{- with $entryPoint.annotationSelector }}
+    {{- with $gateway.annotationSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with $route.annotations }}
@@ -143,12 +147,12 @@ metadata:
   name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
-    {{- with $entryPoint.labelSelector }}
+    {{- with $gateway.labelSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if or $route.annotations $entryPoint.annotationSelector }}
+  {{- if or $route.annotations $gateway.annotationSelector }}
   annotations:
-    {{- with $entryPoint.annotationSelector }}
+    {{- with $gateway.annotationSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with $route.annotations }}
@@ -165,12 +169,12 @@ metadata:
   name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-mtls-{{ $secretKey }}
   labels:
     {{- include "idp-app.labels" $ | nindent 4 }}
-    {{- with $entryPoint.labelSelector }}
+    {{- with $gateway.labelSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if or $route.annotations $entryPoint.annotationSelector }}
+  {{- if or $route.annotations $gateway.annotationSelector }}
   annotations:
-    {{- with $entryPoint.annotationSelector }}
+    {{- with $gateway.annotationSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with $route.annotations }}

@@ -8,10 +8,10 @@ tests:
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: test
           path: /
@@ -23,10 +23,10 @@ tests:
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: test
           path: /exact
@@ -38,10 +38,10 @@ tests:
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: test
           path: "/api/v[0-9]+"
@@ -53,10 +53,10 @@ tests:
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: test
           path: /
@@ -70,10 +70,10 @@ tests:
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           host: myapp.example.com
           path: /
     asserts:
@@ -84,10 +84,10 @@ tests:
       - values/multi.yaml
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: __DEPLOYMENT_ID__
           path: /
@@ -98,24 +98,48 @@ tests:
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: nonexistent
           path: /
     asserts:
       - failedTemplate:
           errorMessage: "global.idpAppConfig.clusters.test.domains.nonexistent is not defined"
 
+  - it: when gateway controller is not traefik, should fail
+    values:
+      - values/service.yaml
+    set:
+      global:
+        idpAppConfig:
+          clusters:
+            test:
+              httpGateways:
+                http-public:
+                  controller: istio
+                  name: http-public
+                  namespace: dev-gateway
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingressRoute: gateway 'http-public' has controller 'istio', only 'traefik' is supported"
+
   - it: when tlsOption is set, should generate TLSOption and reference it in IngressRoute
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: test
           path: /
@@ -140,10 +164,10 @@ tests:
     values:
       - values/service.yaml
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: test
           path: /
@@ -159,10 +183,10 @@ tests:
 
   - it: should support external service backend
     set:
-      traefikIngressRoutes:
+      ingressRoutes:
         public:
           enabled: true
-          entryPointName: websecure
+          gatewayName: http-public
           domain: example.com
           host: test
           path: /
