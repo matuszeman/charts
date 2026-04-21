@@ -366,6 +366,32 @@ containers:
     #       command: ["/bin/sh", "-c", "sleep 5"]
     #lifecycle: {}
 
+# initContainers — Map of init container specs. Run to completion before the main containers start.
+# Uses the same container spec as containers (image, imageTag, resources, env, volumeMounts, etc.)
+# but does NOT require an "app" key — any key names are valid.
+# Note: service ports are NOT auto-added to init containers.
+#
+# Example:
+# initContainers:
+#   migrate:
+#     image: my-app
+#     imageTag: "1.0.0"
+#     command: ["./migrate.sh"]
+#     resources:
+#       requests:
+#         cpu: 100m
+#         memory: 128Mi
+#
+#   wait-for-db:
+#     image: busybox
+#     imageTag: "1.36"
+#     command: ["/bin/sh", "-c", "until nc -z db 5432; do sleep 2; done"]
+#     resources:
+#       requests:
+#         cpu: 10m
+#         memory: 16Mi
+initContainers: {}
+
 # ---------------------------------------------------------------------------
 # Configs — ConfigMaps, Secrets, and external secret sources
 # ---------------------------------------------------------------------------
