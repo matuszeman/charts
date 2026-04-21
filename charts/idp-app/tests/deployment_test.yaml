@@ -334,3 +334,27 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: when initContainers is set, then render initContainers in pod spec
+    values:
+      - values/deployment.yaml
+    set:
+      initContainers:
+        migrate:
+          image: my-app
+          imageTag: "1.0.0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: migrate
+            image: "123456.dkr.ecr.eu-central-1.amazonaws.com/my-app:1.0.0"
+            imagePullPolicy: IfNotPresent
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi

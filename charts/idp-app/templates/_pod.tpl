@@ -46,6 +46,12 @@ spec:
   {{- if not $.Values.enableServiceLinks }}
   enableServiceLinks: {{ $.Values.enableServiceLinks }}
   {{- end }}
+  {{- with $.Values.initContainers }}
+  initContainers:
+    {{- range $k, $v := . }}
+    - {{- include "idp-app.container" ( list (merge (dict "name" $k) $v ) $ ) | nindent 6 }}
+    {{- end }}
+  {{- end }}
   containers:
     {{- $_ := required "containers.app required" $.Values.containers.app -}}
     {{- with $.Values.containers }}
