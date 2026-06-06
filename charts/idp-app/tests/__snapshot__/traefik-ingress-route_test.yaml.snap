@@ -221,6 +221,31 @@ when host is FQDN (no domain), should use host directly:
               port: 80
       tls:
         secretName: RELEASE-NAME-tls
+when service.enabled and ingressRoute.service.port is set, use port override:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-private
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-private
+      name: RELEASE-NAME-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/`)
+          services:
+            - name: RELEASE-NAME
+              port: 9090
+      tls:
+        secretName: RELEASE-NAME-tls
 when tlsOption clientAuth uses only secretNames, should reference existing secrets:
   1: |
     apiVersion: traefik.io/v1alpha1

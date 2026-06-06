@@ -714,6 +714,21 @@ ingress: {}
 #   #   enabled: true
 #   #   appName: authelia                # Named app from clusters.<cluster>.apps
 #   #   allowedGroups: ["admins"]        # Optional group restriction
+#
+#   # Service backend override.
+#   # Two modes depending on whether service.enabled is true:
+#   #
+#   # 1. service.enabled=false: route to an external/existing Service.
+#   #    Both name and port are required.
+#   #    service:
+#   #      name: my-external-svc         # [required] Name of the target Service (supports tpl)
+#   #      port: 8080                    # [required] Service port number or name
+#   #
+#   # 2. service.enabled=true: override the port only for this ingress.
+#   #    The service name is inherited from the deployment. Useful for routing
+#   #    a specific path to an admin/metrics port exposed via service.additionalPorts.
+#   #    service:
+#   #      port: 9090                    # [required] Port number or name from service.additionalPorts
 
 # ingresses — Map of additional named ingresses (same schema as ingress above).
 # Example: ingresses: { api: { enabled: true, ... }, admin: { enabled: true, ... } }
@@ -758,13 +773,20 @@ httpRoutes: {}
 #     # Extra Gateway API filters (appended after forwardAuth if enabled)
 #     # filters: []
 #
-#     # External / override service backend.
-#     # Use when service.enabled is false and you want to route to an existing Service
-#     # (e.g. a service in the same namespace created outside this chart).
-#     # Mutually exclusive with service.enabled — setting both causes a template error.
-#     # service:
-#     #   name: my-external-svc       # [required] Name of the target Service (supports tpl)
-#     #   port: 8080                  # [required] Service port number
+#     # Service backend override.
+#     # Two modes depending on whether service.enabled is true:
+#     #
+#     # 1. service.enabled=false: route to an external/existing Service.
+#     #    Both name and port are required.
+#     #    service:
+#     #      name: my-external-svc     # [required] Name of the target Service (supports tpl)
+#     #      port: 8080                # [required] Service port number or name
+#     #
+#     # 2. service.enabled=true: override the port only for this route.
+#     #    The service name is inherited from the deployment. Useful for routing
+#     #    a specific path to an admin/metrics port exposed via service.additionalPorts.
+#     #    service:
+#     #      port: 9090                # [required] Port number or name from service.additionalPorts
 #
 #     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically)
 #     # forwardAuth:
@@ -832,12 +854,20 @@ ingressRoutes: {}
 #     # middlewares:
 #     #   - name: my-middleware
 #
-#     # External / override service backend.
-#     # Use when service.enabled is false and you want to route to an existing Service.
-#     # Mutually exclusive with service.enabled — setting both causes a template error.
-#     # service:
-#     #   name: my-external-svc          # [required] Name of the target Service (supports tpl)
-#     #   port: 8080                     # [required] Service port number
+#     # Service backend override.
+#     # Two modes depending on whether service.enabled is true:
+#     #
+#     # 1. service.enabled=false: route to an external/existing Service.
+#     #    Both name and port are required.
+#     #    service:
+#     #      name: my-external-svc       # [required] Name of the target Service (supports tpl)
+#     #      port: 8080                  # [required] Service port number or name
+#     #
+#     # 2. service.enabled=true: override the port only for this route.
+#     #    The service name is inherited from the deployment. Useful for routing
+#     #    a specific path to an admin/metrics port exposed via service.additionalPorts.
+#     #    service:
+#     #      port: 9090                  # [required] Port number or name from service.additionalPorts
 #
 #     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically)
 #     # forwardAuth:

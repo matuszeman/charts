@@ -106,7 +106,7 @@ tests:
           appName: oauth2proxy2
     asserts:
       - matchSnapshot: { }
-  - it: when both service.enabled and ingress.service is set, then fail
+  - it: when service.enabled and ingress.service.port is set, use port override
     values:
       - values/deployment.yaml
       - values/service.yaml
@@ -115,13 +115,11 @@ tests:
         enabled: true
         className: nginx-internal
         domain: example.com
-        host: existing-service
+        host: my-app
         service:
-          name: existing-service
-          port: 80
+          port: 9090
     asserts:
-      - failedTemplate:
-          errorMessage: "ingress: both service.enabled and ingress.service is set"
+      - matchSnapshot: {}
   - it: when service is disabled and ingress service is set
     set:
       ingress:
