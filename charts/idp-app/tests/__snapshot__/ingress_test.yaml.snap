@@ -348,3 +348,34 @@ when service is disabled and ingress service is set:
         - hosts:
             - existing-service.example.com
           secretName: RELEASE-NAME-ingress-tls
+when service.enabled and ingress.service.port is set, use port override:
+  1: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        cert-manager.io/cluster-issuer: default
+        nginx.ingress.kubernetes.io/enable-access-log: "true"
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME
+    spec:
+      ingressClassName: nginx-internal
+      rules:
+        - host: my-app.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: RELEASE-NAME
+                    port:
+                      number: 9090
+                path: /
+                pathType: ImplementationSpecific
+      tls:
+        - hosts:
+            - my-app.example.com
+          secretName: RELEASE-NAME-ingress-tls

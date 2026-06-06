@@ -8,7 +8,7 @@
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 {{- $backendRef := dict }}
 {{- if and $.Values.service.enabled $ingress.service }}
-{{- fail "ingress: both service.enabled and ingress.service is set" }}
+{{- $backendRef = dict "name" $deploymentName "port" ($ingress.service.port | required "ingress: service.port required when overriding port") }}
 {{- else if $.Values.service.enabled }}
 {{- $backendRef = dict "name" $deploymentName "port" (default "app" $.Values.service.port) }}
 {{- else if $ingress.service }}

@@ -191,3 +191,19 @@ tests:
             port: 8080
     asserts:
       - matchSnapshot: {}
+
+  - it: when service.enabled and ingressRoute.service.port is set, use port override
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          service:
+            port: 9090
+    asserts:
+      - matchSnapshot: {}
