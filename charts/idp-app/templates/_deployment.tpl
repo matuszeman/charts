@@ -63,6 +63,46 @@ spec:
   revisionHistoryLimit: {{ $this.revisionHistoryLimit }}
   template:
     {{- include "idp-app.podTemplate" (list $ctx $deploymentKey $deployment) | nindent 4 }}
+  {{- if eq $this.kind "StatefulSet" }}
+  {{- $vctEntries := list }}
+  {{- range $volumeName, $volumeSpec := $values.volumes }}
+  {{- if and $volumeSpec.persistentVolumeClaim (not $volumeSpec.persistentVolumeClaim.claimName) }}
+  {{- $vctEntries = append $vctEntries $volumeName }}
+  {{- end }}
+  {{- end }}
+  {{- if $vctEntries }}
+  volumeClaimTemplates:
+  {{- range $volumeName, $volumeSpec := $values.volumes }}
+  {{- if $volumeSpec.persistentVolumeClaim }}
+  {{- $pvcSpec := $volumeSpec.persistentVolumeClaim }}
+  {{- if not $pvcSpec.claimName }}
+  - metadata:
+      name: {{ $volumeName }}
+      {{- with $pvcSpec.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      accessModes:
+        - {{ required (printf "volumes.%s.persistentVolumeClaim.accessMode required" $volumeName) $pvcSpec.accessMode }}
+      {{- with $pvcSpec.storageClassName }}
+      storageClassName: {{ . | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ required (printf "volumes.%s.persistentVolumeClaim.size required" $volumeName) $pvcSpec.size }}
+      {{- with $pvcSpec.selector }}
+      selector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $pvcSpec.volumeName }}
+      volumeName: {{ . }}
+      {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
 ---
 {{- end }}
 {{- end }}

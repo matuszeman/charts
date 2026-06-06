@@ -85,15 +85,17 @@ spec:
     {{- end }}
     {{- with $.Values.volumes }}
     {{- range $name, $spec := . }}
-    - name: {{ $name }}
     {{- if $spec.persistentVolumeClaim }}
-    {{- if not $spec.persistentVolumeClaim.claimName }}
+    {{- if $spec.persistentVolumeClaim.claimName }}
+    - name: {{ $name }}
+      {{ toYaml $spec | nindent 6 }}
+    {{- else if ne $.Values.deployment.kind "StatefulSet" }}
+    - name: {{ $name }}
       persistentVolumeClaim:
         claimName: {{ join "-" (compact (list $deploymentName $name)) }}
-    {{- else }}
-      {{ toYaml $spec | nindent 6 }}
     {{- end }}
     {{- else }}
+    - name: {{ $name }}
       {{ toYaml $spec | nindent 6 }}
     {{- end }}
     {{- end }}

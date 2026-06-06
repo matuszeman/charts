@@ -262,6 +262,15 @@ statefulset:
               topologyKey: kubernetes.io/hostname
               whenUnsatisfiable: ScheduleAnyway
           volumes: null
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
   2: |
     apiVersion: policy/v1
     kind: PodDisruptionBudget

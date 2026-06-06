@@ -3,6 +3,7 @@
 {{- range $volumeName, $volumeSpec := . }}
 {{- if $volumeSpec.persistentVolumeClaim }}
 {{- if not $volumeSpec.persistentVolumeClaim.claimName }}
+{{- if ne $.Values.deployment.kind "StatefulSet" }}
 {{- $pvcSpec := $volumeSpec.persistentVolumeClaim }}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
@@ -35,6 +36,7 @@ spec:
   {{- with $pvcSpec.volumeName }}
   volumeName: {{ . }}
   {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

@@ -520,8 +520,12 @@ configs: {}
 
 # volumes — Map of additional volume definitions.
 # Two PVC modes:
-#   - With claimName: reference an existing PVC.
-#   - Without claimName: auto-create a PVC (one per Deployment in deployment.multi).
+#   - With claimName: reference an existing PVC (works for both Deployment and StatefulSet).
+#   - Without claimName:
+#       Deployment:  creates a standalone PersistentVolumeClaim per deployment
+#                    (one per entry in deployment.multi).
+#       StatefulSet: uses volumeClaimTemplates in the StatefulSet spec so each replica
+#                    gets its own PVC automatically. No standalone PVC is created.
 volumes: {}
 # Example volume configurations:
 # volumes:
@@ -558,6 +562,10 @@ deployment:
   enabled: false
   # kind — Workload type. Deployment or StatefulSet.
   # Valid values: Deployment | StatefulSet
+  #
+  # When StatefulSet: volumes with persistentVolumeClaim (without claimName) are rendered
+  # as volumeClaimTemplates in the StatefulSet spec — each replica gets its own PVC.
+  # Volumes with an explicit claimName still work as regular shared pod volumes.
   kind: Deployment
   # managedByUmbrella — Set to true when an umbrella chart renders the Deployment via
   # {{- include "idp-app.deployments" (list . .Values.<alias>) }}
