@@ -263,7 +263,12 @@ statefulset:
               whenUnsatisfiable: ScheduleAnyway
           volumes: null
       volumeClaimTemplates:
-        - metadata:
+        - apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            labels:
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/name: my-app
             name: data
           spec:
             accessModes:
