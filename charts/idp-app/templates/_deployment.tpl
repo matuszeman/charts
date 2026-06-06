@@ -76,8 +76,12 @@ spec:
   {{- if $volumeSpec.persistentVolumeClaim }}
   {{- $pvcSpec := $volumeSpec.persistentVolumeClaim }}
   {{- if not $pvcSpec.claimName }}
-  - metadata:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
       name: {{ $volumeName }}
+      labels:
+        {{- include "idp-app.selectorLabels" (list $ctx $deploymentKey) | nindent 8 }}
       {{- with $pvcSpec.annotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
