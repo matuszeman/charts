@@ -880,6 +880,48 @@ serviceAccount:
   # Example: awsRoleArn: arn:aws:iam::123456789012:role/my-app-role
   #awsRoleArn: ""
 
+  # rbac — RBAC resources to create and bind to this ServiceAccount.
+  # Rendered when serviceAccount.create: true or serviceAccount.name is set (pre-existing SA).
+  rbac:
+    # roles — Create namespace-scoped Roles with a RoleBinding to this ServiceAccount.
+    # Each entry creates one Role and one RoleBinding.
+    roles: {}
+    # Example:
+    # roles:
+    #   configmap-reader:
+    #     rules:
+    #       - apiGroups: [""]
+    #         resources: ["configmaps"]
+    #         verbs: ["get", "list", "watch"]
+
+    # clusterRoles — Create ClusterRoles with a ClusterRoleBinding to this ServiceAccount.
+    # Each entry creates one ClusterRole and one ClusterRoleBinding.
+    clusterRoles: {}
+    # Example:
+    # clusterRoles:
+    #   node-reader:
+    #     rules:
+    #       - apiGroups: [""]
+    #         resources: ["nodes"]
+    #         verbs: ["get", "list"]
+
+    # clusterRoleBindings — Bind this ServiceAccount to pre-existing ClusterRoles (e.g. built-in "view", "edit").
+    clusterRoleBindings: {}
+    # Example:
+    # clusterRoleBindings:
+    #   view-binding:
+    #     clusterRoleName: view   # required
+
+    # roleBindings — Bind this ServiceAccount to a pre-existing Role or ClusterRole (namespace-scoped binding).
+    # Set either roleName or clusterRoleName, not both.
+    roleBindings: {}
+    # Example:
+    # roleBindings:
+    #   existing-role:
+    #     roleName: some-existing-role
+    #   existing-clusterrole-ns:
+    #     clusterRoleName: edit
+
 # ---------------------------------------------------------------------------
 # Prometheus monitoring
 # ---------------------------------------------------------------------------
