@@ -14,7 +14,7 @@ tests:
       - values/service.yaml
     asserts:
       - failedTemplate:
-          errorMessage: "service: deployment must be enabled or staticIps specified"
+          errorMessage: "service: deployment or statefulset must be enabled or staticIps specified"
   - it: when multi deployment
     values:
       - values/service.yaml

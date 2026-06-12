@@ -3,9 +3,10 @@
 {{- range $volumeName, $volumeSpec := . }}
 {{- if $volumeSpec.persistentVolumeClaim }}
 {{- if not $volumeSpec.persistentVolumeClaim.claimName }}
-{{- if ne $.Values.deployment.kind "StatefulSet" }}
+{{- if ne (include "idp-app.workloadKind" $) "StatefulSet" }}
 {{- $pvcSpec := $volumeSpec.persistentVolumeClaim }}
-{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- $activeWorkload := fromYaml (include "idp-app.activeWorkload" $) }}
+{{- $deployments := default (dict "" dict) $activeWorkload.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 {{- $pvcName := join "-" (compact (list $deploymentName $volumeName)) }}

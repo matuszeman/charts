@@ -1,6 +1,7 @@
 {{- if not .Values.debug -}}
-{{- if and $.Values.deployment.enabled .Values.autoscaling.enabled }}
-{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- if and (or $.Values.deployment.enabled $.Values.statefulset.enabled) .Values.autoscaling.enabled }}
+{{- $activeWorkload := fromYaml (include "idp-app.activeWorkload" $) }}
+{{- $deployments := default (dict "" dict) $activeWorkload.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 apiVersion: autoscaling/v2
@@ -12,7 +13,7 @@ metadata:
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
-    kind: {{ $.Values.deployment.kind }}
+    kind: {{ include "idp-app.workloadKind" $ }}
     name: {{ include "idp-app.fullname" $ }}{{- if $deploymentKey }}-{{ $deploymentKey }}{{- end }}
   minReplicas: {{ required "autoscaling.minReplicas required" $.Values.autoscaling.minReplicas }}
   maxReplicas: {{ required "autoscaling.maxReplicas required" $.Values.autoscaling.maxReplicas }}

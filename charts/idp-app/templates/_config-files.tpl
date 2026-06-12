@@ -13,7 +13,7 @@ Arguments:
 
 restartPodOnUpdate: hashes are injected via idp-app.injectFromFolderHashes before rendering,
 enabling NameSuffix ConfigMap naming. For PodAnnotation pod restarts, pair with
-idp-app.deployments (or equivalent) in the umbrella chart.
+idp-app.workload (or equivalent) in the umbrella chart.
 */}}
 {{- define "idp-app.configsFromFolders" -}}
 {{- $root := index . 0 -}}

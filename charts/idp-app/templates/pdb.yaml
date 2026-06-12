@@ -1,6 +1,7 @@
 {{- if not .Values.debug -}}
-{{- if and .Values.deployment.enabled .Values.podDisruptionBudget.enabled -}}
-{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- if and (or .Values.deployment.enabled .Values.statefulset.enabled) .Values.podDisruptionBudget.enabled -}}
+{{- $activeWorkload := fromYaml (include "idp-app.activeWorkload" $) }}
+{{- $deployments := default (dict "" dict) $activeWorkload.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 apiVersion: policy/v1

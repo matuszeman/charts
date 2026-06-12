@@ -290,14 +290,6 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].ports[0].protocol
           value: UDP
-  - it: when deployment.kind is StatefulSet
-    values:
-      - values/deployment.yaml
-      - values/statefulset.yaml
-    asserts:
-      - equal:
-          path: kind
-          value: StatefulSet
   - it: default restartPolicy is undefined
     values:
       - values/deployment.yaml

@@ -1,11 +1,17 @@
 {{- if not $.Values.debug }}
 {{- $headlessService := $.Values.headlessService }}
+{{- $activeWorkload := fromYaml (include "idp-app.activeWorkload" $) }}
+{{- if $.Values.statefulset.enabled }}
+{{- if not $headlessService.enabled }}
+{{- fail "statefulset: headlessService.enabled must be true when statefulset is enabled" }}
+{{- end }}
+{{- end }}
 {{- if $headlessService.enabled }}
-{{- $deployments := default (dict "" $.Values.deployment) $.Values.deployment.multi }}
+{{- $deployments := default (dict "" $activeWorkload) $activeWorkload.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
-{{- $deployment = mustMergeOverwrite (deepCopy $.Values.deployment) (deepCopy $deployment) }}
+{{- $deployment = mustMergeOverwrite (deepCopy $activeWorkload) (deepCopy $deployment) }}
 {{- if not (or $deployment.enabled) }}
-{{- fail "headlessService: deployment must be enabled" }}
+{{- fail "headlessService: deployment or statefulset must be enabled" }}
 {{- end }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 apiVersion: v1

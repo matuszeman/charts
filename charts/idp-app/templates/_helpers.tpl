@@ -41,6 +41,31 @@ Returns YAML for the resolved behavior, or empty string if nothing to render.
 {{- end -}}
 {{- end -}}
 
+{{/*
+Return the active workload kind: "Deployment" or "StatefulSet".
+Fails if both deployment.enabled and statefulset.enabled are true.
+*/}}
+{{- define "idp-app.workloadKind" -}}
+{{- if and .Values.deployment.enabled .Values.statefulset.enabled }}
+  {{- fail "deployment.enabled and statefulset.enabled cannot both be true" }}
+{{- else if .Values.statefulset.enabled -}}
+StatefulSet
+{{- else -}}
+Deployment
+{{- end -}}
+{{- end }}
+
+{{/*
+Return the active workload values map (deployment or statefulset).
+*/}}
+{{- define "idp-app.activeWorkload" -}}
+{{- if .Values.statefulset.enabled -}}
+{{- toYaml .Values.statefulset -}}
+{{- else -}}
+{{- toYaml .Values.deployment -}}
+{{- end -}}
+{{- end }}
+
 {{- define "idp-app.deploymentName" -}}
 {{- $ := index . 0 -}}
 {{- $deploymentKey := index . 1 -}}

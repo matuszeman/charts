@@ -1,9 +1,9 @@
 {{/*
 Render Deployment/StatefulSet manifests.
-Shared by deployment.yaml (subchart) and umbrella charts.
+Shared by deployment.yaml, statefulset.yaml (subchart) and umbrella charts.
 
 Usage in an umbrella chart template:
-  {{- include "idp-app.deployments" (list . .Values.app) }}
+  {{- include "idp-app.workload" (list . .Values.app) }}
 
 Arguments:
   index 0 — root context (.Files used for fromFolder hash computation when available)
@@ -14,22 +14,20 @@ hashes are computed automatically from .Files — no manual valuesHash needed.
 When called from the subchart directly, .Files has no umbrella files so hash injection is
 skipped (same behaviour as before).
 */}}
-{{- define "idp-app.deployments" -}}
+{{- define "idp-app.workload" -}}
 {{- $root := index . 0 -}}
 {{- $values := index . 1 -}}
 {{- include "idp-app.injectFromFolderHashes" (list $root $values) -}}
 {{- $ctx := set (mustDeepCopy $root) "Values" $values -}}
-{{- $this := $values.deployment -}}
-{{- if not (has $this.kind (list "Deployment" "StatefulSet")) }}
-  {{- fail "deployment.kind must be Deployment or StatefulSet" }}
-{{- end }}
+{{- $kind := include "idp-app.workloadKind" $ctx -}}
+{{- $this := fromYaml (include "idp-app.activeWorkload" $ctx) -}}
 {{- $deployments := default (dict "" $this) $this.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ctx $deploymentKey) }}
 {{- if $deployment.staticIps }}
 {{- else }}
 apiVersion: apps/v1
-kind: {{ $this.kind }}
+kind: {{ $kind }}
 metadata:
   name: {{ $deploymentName }}
   labels:
@@ -42,6 +40,7 @@ spec:
   {{- if not $values.autoscaling.enabled }}
   replicas: {{ $values.replicaCount }}
   {{- end }}
+  {{- if eq $kind "Deployment" }}
   {{- with $this.strategy }}
   {{- if not (has .type (list "RollingUpdate" "Recreate")) }}
     {{- fail "deployment.strategy.type must be RollingUpdate or Recreate" }}
@@ -57,13 +56,40 @@ spec:
     rollingUpdate: null
     {{- end }}
   {{- end }}
+  {{- else if eq $kind "StatefulSet" }}
+  {{- with $this.updateStrategy }}
+  updateStrategy:
+    type: {{ .type | default "RollingUpdate" }}
+    {{- if and (eq (.type | default "RollingUpdate") "RollingUpdate") .rollingUpdate }}
+    rollingUpdate:
+      {{- toYaml .rollingUpdate | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "idp-app.selectorLabels" (list $ctx $deploymentKey) | nindent 6 }}
   revisionHistoryLimit: {{ $this.revisionHistoryLimit }}
+  {{- if eq $kind "StatefulSet" }}
+  serviceName: {{ $this.serviceName | default (printf "%s-headless" $deploymentName) }}
+  {{- with $this.podManagementPolicy }}
+  podManagementPolicy: {{ . }}
+  {{- end }}
+  {{- with $this.minReadySeconds }}
+  minReadySeconds: {{ . }}
+  {{- end }}
+  {{- with $this.ordinals }}
+  ordinals:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $this.persistentVolumeClaimRetentionPolicy }}
+  persistentVolumeClaimRetentionPolicy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
   template:
     {{- include "idp-app.podTemplate" (list $ctx $deploymentKey $deployment) | nindent 4 }}
-  {{- if eq $this.kind "StatefulSet" }}
+  {{- if eq $kind "StatefulSet" }}
   {{- $vctEntries := list }}
   {{- range $volumeName, $volumeSpec := $values.volumes }}
   {{- if and $volumeSpec.persistentVolumeClaim (not $volumeSpec.persistentVolumeClaim.claimName) }}

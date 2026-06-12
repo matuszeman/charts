@@ -1,6 +1,8 @@
-deployment:
+statefulset:
   enabled: true
-  kind: StatefulSet
+
+headlessService:
+  enabled: true
 
 service:
   enabled: true

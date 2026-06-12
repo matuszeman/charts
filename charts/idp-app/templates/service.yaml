@@ -1,10 +1,11 @@
 {{- if not .Values.debug -}}
 {{- if .Values.service.enabled }}
-{{- $deployments := default (dict "" $.Values.deployment) $.Values.deployment.multi }}
+{{- $activeWorkload := fromYaml (include "idp-app.activeWorkload" $) }}
+{{- $deployments := default (dict "" $activeWorkload) $activeWorkload.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
-{{- $deployment = mustMergeOverwrite (deepCopy $.Values.deployment) (deepCopy $deployment) }}
+{{- $deployment = mustMergeOverwrite (deepCopy $activeWorkload) (deepCopy $deployment) }}
 {{- if not (or $deployment.enabled $deployment.staticIps) }}
-{{- fail "service: deployment must be enabled or staticIps specified" }}
+{{- fail "service: deployment or statefulset must be enabled or staticIps specified" }}
 {{- end }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
 apiVersion: v1

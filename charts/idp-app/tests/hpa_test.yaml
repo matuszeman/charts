@@ -97,9 +97,8 @@ tests:
                 value: 5
                 periodSeconds: 60
 
-  - it: when deployment.kind is StatefulSet
+  - it: when statefulset is enabled
     values:
-      - values/deployment.yaml
       - values/autoscaling.yaml
       - values/statefulset.yaml
     asserts:
