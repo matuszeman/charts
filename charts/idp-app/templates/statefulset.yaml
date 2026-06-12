@@ -1,6 +1,6 @@
 {{- if not $.Values.debug -}}
-{{- if $.Values.deployment.enabled }}
-{{- if not $.Values.deployment.managedByUmbrella }}
+{{- if $.Values.statefulset.enabled }}
+{{- if not $.Values.statefulset.managedByUmbrella }}
 {{- include "idp-app.workload" (list $ $.Values) }}
 {{- end }}
 {{- end }}

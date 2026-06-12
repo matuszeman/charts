@@ -498,15 +498,15 @@ configs: {}
 #   # Supports templated: true (and values:) — file contents are run through tpl at render time.
 #   # See examples/config-files for a complete example.
 #   #
-#   # restartPodOnUpdate: supported automatically when using idp-app.deployments in the
+#   # restartPodOnUpdate: supported automatically when using idp-app.workload in the
 #   # umbrella chart — file content hash is computed from .Files at render time.
-#   # Without idp-app.deployments, set valuesHash manually (e.g. from CI sha256sum).
+#   # Without idp-app.workload, set valuesHash manually (e.g. from CI sha256sum).
 #   app-folder-config:
 #     fromFolder: configs   # Folder path relative to umbrella chart root
 #     templated: true       # Optional: render file contents as Go templates
 #     values:               # Optional: extra variables accessible as .configSpec.values.*
 #       env: production
-#     restartPodOnUpdate: PodAnnotation  # Auto-computed when using idp-app.deployments
+#     restartPodOnUpdate: PodAnnotation  # Auto-computed when using idp-app.workload
 #     # valuesHash: abc123  # Manual override; takes precedence over auto-computed hash
 #
 #   # Reference an existing Secret — the reference string is always rendered through
@@ -526,6 +526,7 @@ configs: {}
 #                    (one per entry in deployment.multi).
 #       StatefulSet: uses volumeClaimTemplates in the StatefulSet spec so each replica
 #                    gets its own PVC automatically. No standalone PVC is created.
+#                    (one volumeClaimTemplate per entry in statefulset.multi)
 volumes: {}
 # Example volume configurations:
 # volumes:
@@ -560,22 +561,15 @@ volumes: {}
 
 deployment:
   enabled: false
-  # kind — Workload type. Deployment or StatefulSet.
-  # Valid values: Deployment | StatefulSet
-  #
-  # When StatefulSet: volumes with persistentVolumeClaim (without claimName) are rendered
-  # as volumeClaimTemplates in the StatefulSet spec — each replica gets its own PVC.
-  # Volumes with an explicit claimName still work as regular shared pod volumes.
-  kind: Deployment
   # managedByUmbrella — Set to true when an umbrella chart renders the Deployment via
-  # {{- include "idp-app.deployments" (list . .Values.<alias>) }}
+  # {{- include "idp-app.workload" (list . .Values.<alias>) }}
   # Prevents duplicate Deployment output while keeping PDB/HPA/Service resources active.
   managedByUmbrella: false
   annotations: {}
   # revisionHistoryLimit — Number of old ReplicaSets to retain.
   revisionHistoryLimit: 1
 
-  # strategy — Update strategy for Deployment. Ignored for StatefulSet.
+  # strategy — Update strategy for Deployment.
   # https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
   # strategy:
   #   type: RollingUpdate    # RollingUpdate | Recreate
@@ -588,7 +582,7 @@ deployment:
   # Example: staticIps: ["10.0.0.1", "10.0.0.2"]
   #staticIps: []
 
-  # multi — Create multiple Deployments/StatefulSets from one chart release.
+  # multi — Create multiple Deployments from one chart release.
   # Each key becomes a name suffix appended to the release name.
   # The containers map at the multi level is deep-merged over the top-level containers.
   #
@@ -618,6 +612,52 @@ deployment:
   #       path: /
   #
   # See tests/values/examples/multi-deployment.yaml for a full example.
+
+statefulset:
+  enabled: false
+  # NOTE: headlessService.enabled must also be set to true when enabling StatefulSet.
+  # managedByUmbrella — Set to true when an umbrella chart renders the StatefulSet via
+  # {{- include "idp-app.workload" (list . .Values.<alias>) }}
+  # Prevents duplicate StatefulSet output while keeping PDB/HPA/Service resources active.
+  managedByUmbrella: false
+  annotations: {}
+  # revisionHistoryLimit — Number of old StatefulSet revisions to retain.
+  revisionHistoryLimit: 1
+
+  # updateStrategy — Update strategy for StatefulSet.
+  # https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
+  # updateStrategy:
+  #   type: RollingUpdate    # RollingUpdate | OnDelete
+  #   rollingUpdate:
+  #     partition: 0         # Only pods with ordinal >= partition are updated
+  #     maxUnavailable: 1
+
+  # podManagementPolicy — Controls the order of pod creation/deletion.
+  # podManagementPolicy: OrderedReady   # OrderedReady | Parallel
+
+  # ordinals — Control the starting ordinal of the StatefulSet (K8s >= 1.27).
+  # ordinals:
+  #   start: 0
+
+  # minReadySeconds — Minimum seconds a pod must be ready before being considered available.
+  # minReadySeconds: 0
+
+  # persistentVolumeClaimRetentionPolicy — Controls PVC lifecycle on scale/delete.
+  # persistentVolumeClaimRetentionPolicy:
+  #   whenDeleted: Retain    # Retain | Delete
+  #   whenScaled: Retain     # Retain | Delete
+
+  # multi — Create multiple StatefulSets from one chart release.
+  # Each key becomes a name suffix; a matching headless service is also created per key.
+  # The containers map at the multi level is deep-merged over the top-level containers.
+  #
+  # Example:
+  # multi:
+  #   primary: {}
+  #   secondary:
+  #     containers:
+  #       app:
+  #         command: ["replica"]
 
 job:
   enabled: false
@@ -667,7 +707,9 @@ service:
   #     targetPort: metrics
 
 # headlessService — Create a headless Service (clusterIP: None).
-# Useful for StatefulSets to enable DNS-based pod discovery (pod-0.svc, pod-1.svc, ...).
+# Required when statefulset.enabled is true — enables DNS-based pod discovery
+# (pod-0.release-name-headless, pod-1.release-name-headless, ...).
+# Chart will fail if statefulset.enabled is true and headlessService.enabled is false.
 headlessService:
   enabled: false
 

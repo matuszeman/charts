@@ -89,7 +89,7 @@ spec:
     {{- if $spec.persistentVolumeClaim.claimName }}
     - name: {{ $name }}
       {{ toYaml $spec | nindent 6 }}
-    {{- else if ne $.Values.deployment.kind "StatefulSet" }}
+    {{- else if ne (include "idp-app.workloadKind" $) "StatefulSet" }}
     - name: {{ $name }}
       persistentVolumeClaim:
         claimName: {{ join "-" (compact (list $deploymentName $name)) }}

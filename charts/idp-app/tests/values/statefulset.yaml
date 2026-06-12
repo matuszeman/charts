@@ -1,2 +1,5 @@
-deployment:
-  kind: StatefulSet
+statefulset:
+  enabled: true
+
+headlessService:
+  enabled: true
