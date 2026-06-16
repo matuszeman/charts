@@ -77,16 +77,16 @@ Common labels
 */}}
 {{- define "idp-app.labels" -}}
 {{- include "idp-app.selectorLabels" (list . "") }}
-app.kubernetes.io/version: {{ tpl (required "appVersion required" .Values.appVersion) . }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/version: {{ tpl (required "appVersion required" .Values.appVersion) . | quote }}
+app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
 {{- end }}
 
 {{- define "idp-app.labelsMulti" -}}
 {{- $ := index . 0 -}}
 {{- $deploymentName := index . 1 -}}
 {{- include "idp-app.selectorLabels" (list $ $deploymentName) }}
-app.kubernetes.io/version: {{ tpl (required "appVersion required" $.Values.appVersion) $ }}
-app.kubernetes.io/managed-by: {{ $.Release.Service }}
+app.kubernetes.io/version: {{ tpl (required "appVersion required" $.Values.appVersion) $ | quote }}
+app.kubernetes.io/managed-by: {{ $.Release.Service | quote }}
 {{- end }}
 
 {{/*
@@ -95,14 +95,14 @@ Selector labels
 {{- define "idp-app.selectorLabels" -}}
 {{- $ := index . 0 -}}
 {{- $deploymentName := index . 1 -}}
-app.kubernetes.io/name: {{ include "idp-app.name" $ }}
-app.kubernetes.io/instance: {{ include "idp-app.fullname" $ }}{{ if $deploymentName }}-{{ $deploymentName }}{{ end }}
+app.kubernetes.io/name: {{ include "idp-app.name" $ | quote }}
+app.kubernetes.io/instance: {{ (printf "%s%s" (include "idp-app.fullname" $) (ternary (printf "-%s" $deploymentName) "" (not (empty $deploymentName)))) | quote }}
 {{- end }}
 
 {{- define "idp-app.oauth2ProxySelectorLabels" -}}
 {{- $ := index . 0 -}}
-app.kubernetes.io/name: {{ include "idp-app.name" $ }}-oauth2-proxy
-app.kubernetes.io/instance: {{ include "idp-app.fullname" $ }}
+app.kubernetes.io/name: {{ (printf "%s-oauth2-proxy" (include "idp-app.name" $)) | quote }}
+app.kubernetes.io/instance: {{ include "idp-app.fullname" $ | quote }}
 {{- end }}
 
 
