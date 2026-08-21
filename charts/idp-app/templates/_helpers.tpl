@@ -149,3 +149,12 @@ When domain has no placeholder: host is prepended with "." separator (legacy beh
   {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/* Build a query string from a map: "key1=val1&key2=val2" */}}
+{{- define "idp-app.queryString" -}}
+{{- $parts := list -}}
+{{- range $k, $v := . -}}
+{{-   $parts = append $parts (printf "%s=%s" $k (toString $v)) -}}
+{{- end -}}
+{{- join "&" $parts -}}
+{{- end -}}

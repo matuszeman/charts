@@ -68,6 +68,28 @@ tests:
     asserts:
       - matchSnapshot: { }
 
+  - it: when forwardAuth authQueryParams set, should append query string to address
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            appName: authelia
+            authQueryParams:
+              allowed_groups: admins
+    asserts:
+      - documentIndex: 1
+        equal:
+          path: spec.forwardAuth.address
+          value: "http://authelia.auth.svc.cluster.local/api/authz/forward-auth?allowed_groups=admins"
+
   - it: when forwardAuth enabled with unsupported gateway controller, should fail
     values:
       - values/service.yaml

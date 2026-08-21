@@ -843,7 +843,8 @@ httpRoutes: {}
 #     # forwardAuth:
 #     #   enabled: true
 #     #   appName: authelia            # Named app from clusters.<cluster>.apps
-#     #   allowedGroups: ["admins"]    # Optional group restriction
+#     #   authQueryParams:             # Optional query params appended to the auth address
+#     #     allowed_groups: admins,editors
 
 # ---------------------------------------------------------------------------
 # Traefik IngressRoutes (traefik.io/v1alpha1)
@@ -932,7 +933,8 @@ ingressRoutes: {}
 #     # forwardAuth:
 #     #   enabled: true
 #     #   appName: authelia              # Named app from clusters.<cluster>.apps
-#     #   allowedGroups: ["admins"]      # Optional group restriction
+#     #   authQueryParams:               # Optional query params appended to the auth address
+#     #     allowed_groups: admins,editors
 
 # ---------------------------------------------------------------------------
 # Autoscaling (HorizontalPodAutoscaler)
