@@ -21,12 +21,17 @@
 {{- fail "ingressRoute: service must be enabled" }}
 {{- end }}
 {{- $routeName := join "-" (compact (list $deploymentName $routeKey)) }}
-{{- $host := "" }}
-{{- if $route.domain }}
+{{- $hostList := list }}
+{{- if $route.hosts }}
+{{- range $route.hosts }}
+{{- $h := . | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- $hostList = append $hostList $h }}
+{{- end }}
+{{- else if $route.domain }}
 {{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $route.domain) }}
-{{- $host = (include "idp-app.resolveHostFromDomain" (list $route.host $domain)) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- $hostList = append $hostList ((include "idp-app.resolveHostFromDomain" (list $route.host $domain)) | replace "__DEPLOYMENT_ID__" $deploymentKey) }}
 {{- else }}
-{{- $host = ($route.host | required "ingressRoute: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- $hostList = append $hostList (($route.host | required "ingressRoute: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey) }}
 {{- end }}
 {{- $pathFunc := "" }}
 {{- $pathType := $route.pathType | default "PathPrefix" }}
@@ -42,7 +47,15 @@
 {{- else }}
 {{- fail (printf "ingressRoute: unsupported pathType '%s'" $pathType) }}
 {{- end }}
-{{- $matchRule := printf "Host(`%s`) && %s" $host $pathFunc }}
+{{- $hostExprs := list }}
+{{- range $hostList }}
+{{- $hostExprs = append $hostExprs (printf "Host(`%s`)" .) }}
+{{- end }}
+{{- $hostMatch := join " || " $hostExprs }}
+{{- if gt (len $hostList) 1 }}
+{{- $hostMatch = printf "(%s)" $hostMatch }}
+{{- end }}
+{{- $matchRule := printf "%s && %s" $hostMatch $pathFunc }}
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:

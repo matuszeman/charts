@@ -795,7 +795,9 @@ httpRoutes: {}
 #     enabled: true
 #     gatewayName: http-public         # Named gateway from clusters.<cluster>.httpGateways
 #
-#     # Host resolution (same as ingress — domain + host, or host alone):
+#     # Host resolution (pick one):
+#     #
+#     # Option A — single host via domain + host (or host alone as FQDN):
 #     domain: example.com
 #     host: my-app                     # Results in my-app.example.com
 #     # host: my-app.example.com       # Without domain: used as full FQDN directly
@@ -803,6 +805,11 @@ httpRoutes: {}
 #     # Domain values may contain a generic <HOST{sep}> placeholder to control separator and position.
 #     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
 #     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
+#
+#     # Option B — multiple explicit hostnames (FQDNs; supports __DEPLOYMENT_ID__):
+#     # hosts:
+#     #   - my-app.example.com
+#     #   - my-app.other.com
 #
 #     # __DEPLOYMENT_ID__ placeholder (for deployment.multi):
 #     # host: __DEPLOYMENT_ID__          # replaced with each deployment key → one.example.com, two.example.com
@@ -856,7 +863,9 @@ ingressRoutes: {}
 #     enabled: true
 #     gatewayName: http-public            # [required] Named gateway from clusters.<cluster>.httpGateways
 #
-#     # Host resolution (same as httpRoutes — domain + host, or host alone):
+#     # Host resolution (pick one):
+#     #
+#     # Option A — single host via domain + host (or host alone as FQDN):
 #     domain: example.com
 #     host: my-app                       # Results in my-app.example.com
 #     # host: my-app.example.com         # Without domain: used as full FQDN directly
@@ -864,6 +873,11 @@ ingressRoutes: {}
 #     # Domain values may contain a generic <HOST{sep}> placeholder to control separator and position.
 #     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
 #     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
+#
+#     # Option B — multiple explicit hostnames (FQDNs; supports __DEPLOYMENT_ID__):
+#     # hosts:
+#     #   - my-app.example.com
+#     #   - my-app.other.com
 #
 #     # __DEPLOYMENT_ID__ placeholder (for deployment.multi):
 #     # host: __DEPLOYMENT_ID__          # replaced with each deployment key → one.example.com, two.example.com
