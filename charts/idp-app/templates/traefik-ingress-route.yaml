@@ -30,6 +30,9 @@
 {{- end }}
 {{- $pathFunc := "" }}
 {{- $pathType := $route.pathType | default "PathPrefix" }}
+{{- if and $route.stripPathPrefix (ne $pathType "PathPrefix") }}
+{{- fail (printf "ingressRoute '%s': stripPathPrefix is only supported with pathType PathPrefix" $routeKey) }}
+{{- end }}
 {{- if eq $pathType "PathPrefix" }}
 {{- $pathFunc = printf "PathPrefix(`%s`)" ($route.path | required "ingressRoute: path required") }}
 {{- else if eq $pathType "Exact" }}
@@ -70,6 +73,9 @@ spec:
       {{- $middlewareList := list }}
       {{- if and $route.forwardAuth $route.forwardAuth.enabled }}
       {{- $middlewareList = append $middlewareList (dict "name" (printf "%s-%s-forwardauth" (include "idp-app.fullname" $) $routeKey)) }}
+      {{- end }}
+      {{- if $route.stripPathPrefix }}
+      {{- $middlewareList = append $middlewareList (dict "name" (printf "%s-%s-strippathprefix" (include "idp-app.fullname" $) $routeKey)) }}
       {{- end }}
       {{- range $route.middlewares }}
       {{- $middlewareList = append $middlewareList . }}
@@ -124,6 +130,31 @@ spec:
     authRequestHeaders:
       {{- toYaml $traefikConfig.authRequestHeaders | nindent 6 }}
     {{- end }}
+---
+{{- end }}
+{{- if $route.stripPathPrefix }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-strippathprefix
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if or $route.annotations $gateway.annotationSelector }}
+  annotations:
+    {{- with $gateway.annotationSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $route.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  stripPrefix:
+    prefixes:
+      - {{ $route.path | required "ingressRoute: path required" }}
 ---
 {{- end }}
 {{- if $route.tlsOption }}

@@ -810,6 +810,7 @@ httpRoutes: {}
 #
 #     path: /                          # [required] URL path to match
 #     pathType: PathPrefix             # PathPrefix | Exact | RegularExpression
+#     # stripPathPrefix: false         # Strip the path prefix before forwarding (adds URLRewrite filter)
 #
 #     annotations: {}                  # Annotations added to the HTTPRoute resource
 #
@@ -869,6 +870,7 @@ ingressRoutes: {}
 #
 #     path: /                            # [required] URL path to match
 #     pathType: PathPrefix               # PathPrefix | Exact | RegularExpression
+#     # stripPathPrefix: false           # Strip the path prefix before forwarding (generates a StripPrefix Middleware)
 #
 #     tls:                                # TLS config for IngressRoute
 #       secretName: my-tls-secret         # [required] Name of Secret containing the TLS certificate (supports tpl)

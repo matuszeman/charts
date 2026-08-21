@@ -207,3 +207,35 @@ tests:
             port: 9090
     asserts:
       - matchSnapshot: {}
+
+  - it: when stripPathPrefix is true, should create StripPrefix Middleware and reference it
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /api
+          stripPathPrefix: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when stripPathPrefix is true and pathType is not PathPrefix, should fail
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /api
+          pathType: Exact
+          stripPathPrefix: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingressRoute 'public': stripPathPrefix is only supported with pathType PathPrefix"
