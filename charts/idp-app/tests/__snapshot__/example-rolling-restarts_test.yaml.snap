@@ -14,7 +14,7 @@ should match snapshot:
         app.kubernetes.io/version: 1.0.0
       name: RELEASE-NAME-config-app-config
   2: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       labels:
@@ -59,7 +59,7 @@ should match snapshot:
         app.kubernetes.io/version: 1.0.0
       name: RELEASE-NAME-config-static-config
   4: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: SecretStore
     metadata:
       labels:

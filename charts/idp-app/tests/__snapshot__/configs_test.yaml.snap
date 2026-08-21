@@ -14,7 +14,7 @@ should match snapshot with values-ci.yaml:
         custom: label
       name: RELEASE-NAME-resource-suffix-config-app
   2: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       labels:
@@ -49,7 +49,7 @@ should match snapshot with values-ci.yaml:
               app.kubernetes.io/version: 0.1.0
               custom: label
   3: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       annotations:
@@ -85,7 +85,7 @@ should match snapshot with values-ci.yaml:
               app.kubernetes.io/version: 0.1.0
               custom: label
   4: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       labels:
@@ -174,7 +174,7 @@ should match snapshot with values-ci.yaml:
       name: RELEASE-NAME-resource-suffix-config-secret-opaque
     type: Opaque
   9: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: SecretStore
     metadata:
       labels:
@@ -471,7 +471,7 @@ should match snapshot with values-ci.yaml:
                 claimName: pvc-files
 when awsSecret is specified, then generate SecretStore and ExternalSecret:
   1: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       labels:
@@ -503,7 +503,7 @@ when awsSecret is specified, then generate SecretStore and ExternalSecret:
               app.kubernetes.io/name: app-name
               app.kubernetes.io/version: 0.1.0
   2: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: SecretStore
     metadata:
       labels:
@@ -523,7 +523,7 @@ when awsSecret is specified, then generate SecretStore and ExternalSecret:
           service: SecretsManager
 when global.idpAppConfig.defaults.configs.annotations is set:
   1: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: ExternalSecret
     metadata:
       annotations:
@@ -571,7 +571,7 @@ when global.idpAppConfig.defaults.configs.annotations is set:
         app.kubernetes.io/version: 0.1.0
       name: RELEASE-NAME-config-cm
   3: |
-    apiVersion: external-secrets.io/v1beta1
+    apiVersion: external-secrets.io/v1
     kind: SecretStore
     metadata:
       annotations:
