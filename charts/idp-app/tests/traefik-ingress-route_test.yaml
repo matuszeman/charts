@@ -223,6 +223,23 @@ tests:
     asserts:
       - matchSnapshot: {}
 
+  - it: when hosts list is set, should match all hosts in route rule
+    values:
+      - values/service.yaml
+    set:
+      ingressRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          hosts:
+            - my-app.example.com
+            - my-app.other.com
+          path: /
+    asserts:
+      - equal:
+          path: spec.routes[0].match
+          value: "(Host(`my-app.example.com`) || Host(`my-app.other.com`)) && PathPrefix(`/`)"
+
   - it: when stripPathPrefix is true and pathType is not PathPrefix, should fail
     values:
       - values/service.yaml
