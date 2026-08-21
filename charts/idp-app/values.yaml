@@ -95,6 +95,7 @@
 #       configs:
 #         annotations: {}
 #         externalSecret:
+#           apiVersion: "external-secrets.io/v1"  # Default; use "external-secrets.io/v1beta1" for older ESO versions
 #           refreshInterval: "99999h"
 #       # Named HPA scaling behavior presets — referenced by autoscaling.scaleDown.preset / autoscaling.scaleUp.preset
 #       autoscaling:

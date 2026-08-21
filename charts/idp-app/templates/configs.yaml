@@ -2,6 +2,7 @@
 {{- if not (empty .Values.configs) }}
 {{- $defaultsConfigsAnnotations := ((((.Values.global).idpAppConfig).defaults).configs).annotations | default (dict) }}
 {{- $defaultsConfigsExternalSecret := ((((.Values.global).idpAppConfig).defaults).configs).externalSecret | default (dict) }}
+{{- $externalSecretApiVersion := get $defaultsConfigsExternalSecret "apiVersion" | default "external-secrets.io/v1" }}
 {{- $secretStore := false }}
 {{- range $configKey, $configSpec := .Values.configs }}
 {{- $mergedLabels := merge (dict) (include "idp-app.labels" $ | fromYaml) (default $configSpec.labels dict) }}
@@ -41,7 +42,7 @@ spec:
 {{- $secretStore = true }}
 {{- with .awsSecret }}
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: {{ $externalSecretApiVersion }}
 kind: ExternalSecret
 metadata:
   name: {{ include "idp-app.configName" (list $ $configKey) }}
@@ -85,7 +86,7 @@ spec:
 {{- if $secretStore }}
 {{- $cluster := include "idp-app.clusterConfig" $ | fromYaml }}
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: {{ $externalSecretApiVersion }}
 kind: SecretStore
 metadata:
   name: {{ include "idp-app.fullname" $ }}-config-secretsmanager
