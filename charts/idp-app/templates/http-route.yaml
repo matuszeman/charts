@@ -116,18 +116,12 @@ metadata:
   {{- end }}
 spec:
   forwardAuth:
-    address: "{{ $traefikConfig.address }}{{ if $route.forwardAuth.allowedGroups }}?allowed_groups={{ join "," $route.forwardAuth.allowedGroups }}{{ end }}"
-    {{- if $traefikConfig.trustForwardHeader }}
-    trustForwardHeader: {{ $traefikConfig.trustForwardHeader }}
+    {{- $address := $traefikConfig.address }}
+    {{- with $route.forwardAuth.authQueryParams }}
+    {{-   $address = printf "%s?%s" $address (include "idp-app.queryString" .) }}
     {{- end }}
-    {{- if $traefikConfig.authResponseHeaders }}
-    authResponseHeaders:
-      {{- toYaml $traefikConfig.authResponseHeaders | nindent 6 }}
-    {{- end }}
-    {{- if $traefikConfig.authRequestHeaders }}
-    authRequestHeaders:
-      {{- toYaml $traefikConfig.authRequestHeaders | nindent 6 }}
-    {{- end }}
+    {{- omit $traefikConfig "address" | toYaml | nindent 4 }}
+    address: "{{ $address }}"
 ---
 {{- end }}
 {{- end }}
