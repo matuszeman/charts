@@ -28,6 +28,10 @@
 {{- $gatewayParentName := $gateway.name | required "global.idpAppConfig.httpGateways.NAME.name required" }}
 {{- $gatewayParentNamespace := $gateway.namespace | default $.Release.Namespace }}
 {{- $gatewayController := $gateway.controller | required "global.idpAppConfig.httpGateways.NAME.controller required"  }}
+{{- $pathType := $route.pathType | default "PathPrefix" }}
+{{- if and $route.stripPathPrefix (ne $pathType "PathPrefix") }}
+{{- fail (printf "httpRoute '%s': stripPathPrefix is only supported with pathType PathPrefix" $routeKey) }}
+{{- end }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -52,9 +56,9 @@ spec:
   rules:
     - matches:
         - path:
-            type: {{ $route.pathType | default "PathPrefix" }}
+            type: {{ $pathType }}
             value: {{ $route.path | required "httpRoute: path required" }}
-      {{- if or $route.filters (and $route.forwardAuth $route.forwardAuth.enabled) }}
+      {{- if or $route.filters $route.stripPathPrefix (and $route.forwardAuth $route.forwardAuth.enabled) }}
       filters:
         {{- if and $route.forwardAuth $route.forwardAuth.enabled }}
         {{- if eq $gatewayController "traefik" }}
@@ -66,6 +70,13 @@ spec:
         {{- else }}
         {{- fail "forwardAuth filter is only supported with traefik gateway controller" }}
         {{- end }}
+        {{- end }}
+        {{- if $route.stripPathPrefix }}
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
         {{- end }}
         {{- with $route.filters }}
         {{- toYaml . | nindent 8 }}

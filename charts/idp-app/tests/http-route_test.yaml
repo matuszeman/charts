@@ -282,3 +282,35 @@ tests:
                     namespace: NAMESPACE
                     port: 80
         documentIndex: 1
+
+  - it: when stripPathPrefix is true, should add URLRewrite filter
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /api
+          stripPathPrefix: true
+    asserts:
+      - matchSnapshot: {}
+
+  - it: when stripPathPrefix is true and pathType is not PathPrefix, should fail
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: http-public
+          domain: example.com
+          host: test
+          path: /api
+          pathType: Exact
+          stripPathPrefix: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "httpRoute 'public': stripPathPrefix is only supported with pathType PathPrefix"
