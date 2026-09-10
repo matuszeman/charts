@@ -20,15 +20,21 @@ global:
             namespace: dev-gateway
         apps:
           authelia:
-            traefik:
-              forwardAuthMiddleware:
-                address: 'http://authelia.auth.svc.cluster.local/api/authz/forward-auth'
-                trustForwardHeader: true
-                authResponseHeaders:
-                  - 'Remote-User'
-                  - 'Remote-Groups'
-                  - 'Remote-Email'
-                  - 'Remote-Name'
+            service:
+              name: authelia
+              namespace: auth
+              port: 80
+            forwardAuth:
+              authUrl: 'http://authelia.auth.svc.cluster.local/api/authz/forward-auth'
+              authResponseHeaders:
+                - 'Remote-User'
+                - 'Remote-Groups'
+                - 'Remote-Email'
+                - 'Remote-Name'
+              controllers:
+                traefik:
+                  middlewareParams:
+                    trustForwardHeader: true
         nodePools:
           test1:
             nodeSelector:

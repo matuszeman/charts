@@ -1,0 +1,354 @@
+appends allowed_groups to the forwardAuth address:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2
+    spec:
+      chain:
+        middlewares:
+          - name: RELEASE-NAME-oauth2-errors
+          - name: RELEASE-NAME-oauth2-auth
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-auth
+    spec:
+      forwardAuth:
+        address: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth?allowed_groups=one@example.com,two@example.com
+        authResponseHeaders:
+          - Auth-Proxy-Email
+          - Auth-Proxy-Groups
+        trustForwardHeader: true
+  3: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-errors
+    spec:
+      errors:
+        query: /oauth2/sign_in?rd=https%3A%2F%2Ftestapp.example.com{url}
+        service:
+          name: RELEASE-NAME-oauth2-signin
+          port: 80
+        status:
+          - "401"
+  4: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-signin-host
+    spec:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Host: oauth2proxy.auth.example.com
+  5: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-oauth2-signin
+    spec:
+      externalName: oauth2proxy.auth.svc.cluster.local
+      ports:
+        - port: 80
+      type: ExternalName
+  6: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        traefik.ingress.kubernetes.io/router.middlewares: NAMESPACE-RELEASE-NAME-oauth2-signin-host@kubernetescrd
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-passthrough
+    spec:
+      ingressClassName: traefik-public
+      rules:
+        - host: testapp.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: RELEASE-NAME-oauth2-signin
+                    port:
+                      number: 80
+                path: /oauth2
+                pathType: Prefix
+      tls:
+        - hosts:
+            - testapp.example.com
+          secretName: RELEASE-NAME-ingress-tls
+renders chain, auth, errors, signin-host, ExternalName service and passthrough for a cross-namespace oauth2proxy:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2
+    spec:
+      chain:
+        middlewares:
+          - name: RELEASE-NAME-oauth2-errors
+          - name: RELEASE-NAME-oauth2-auth
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-auth
+    spec:
+      forwardAuth:
+        address: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth
+        authResponseHeaders:
+          - Auth-Proxy-Email
+          - Auth-Proxy-Groups
+        trustForwardHeader: true
+  3: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-errors
+    spec:
+      errors:
+        query: /oauth2/sign_in?rd=https%3A%2F%2Ftestapp.example.com{url}
+        service:
+          name: RELEASE-NAME-oauth2-signin
+          port: 80
+        status:
+          - "401"
+  4: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-signin-host
+    spec:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Host: oauth2proxy.auth.example.com
+  5: |
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+      name: RELEASE-NAME-oauth2-signin
+    spec:
+      externalName: oauth2proxy.auth.svc.cluster.local
+      ports:
+        - port: 80
+      type: ExternalName
+  6: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        traefik.ingress.kubernetes.io/router.middlewares: NAMESPACE-RELEASE-NAME-oauth2-signin-host@kubernetescrd
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-passthrough
+    spec:
+      ingressClassName: traefik-public
+      rules:
+        - host: testapp.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: RELEASE-NAME-oauth2-signin
+                    port:
+                      number: 80
+                path: /oauth2
+                pathType: Prefix
+      tls:
+        - hosts:
+            - testapp.example.com
+          secretName: RELEASE-NAME-ingress-tls
+uses the service directly without ExternalName when oauth2proxy is in the release namespace:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2
+    spec:
+      chain:
+        middlewares:
+          - name: RELEASE-NAME-oauth2-errors
+          - name: RELEASE-NAME-oauth2-auth
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-auth
+    spec:
+      forwardAuth:
+        address: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth
+        authResponseHeaders:
+          - Auth-Proxy-Email
+          - Auth-Proxy-Groups
+        trustForwardHeader: true
+  3: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-errors
+    spec:
+      errors:
+        query: /oauth2/sign_in?rd=https%3A%2F%2Ftestapp.example.com{url}
+        service:
+          name: oauth2proxy
+          port: 80
+        status:
+          - "401"
+  4: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-signin-host
+    spec:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Host: oauth2proxy.auth.example.com
+  5: |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      annotations:
+        traefik.ingress.kubernetes.io/router.middlewares: NAMESPACE-RELEASE-NAME-oauth2-signin-host@kubernetescrd
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-oauth2-passthrough
+    spec:
+      ingressClassName: traefik-public
+      rules:
+        - host: testapp.example.com
+          http:
+            paths:
+              - backend:
+                  service:
+                    name: oauth2proxy
+                    port:
+                      number: 80
+                path: /oauth2
+                pathType: Prefix
+      tls:
+        - hosts:
+            - testapp.example.com
+          secretName: RELEASE-NAME-ingress-tls

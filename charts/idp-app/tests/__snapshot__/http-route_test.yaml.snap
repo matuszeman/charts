@@ -3,12 +3,14 @@ when forwardAuth enabled, should add filter to httproute and generate traefik mi
     apiVersion: gateway.networking.k8s.io/v1
     kind: HTTPRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       hostnames:
@@ -16,8 +18,8 @@ when forwardAuth enabled, should add filter to httproute and generate traefik mi
       parentRefs:
         - group: gateway.networking.k8s.io
           kind: Gateway
-          name: http-public
-          namespace: dev-gateway
+          name: traefik-public
+          namespace: gateway-test
       rules:
         - backendRefs:
             - group: ""
@@ -40,33 +42,35 @@ when forwardAuth enabled, should add filter to httproute and generate traefik mi
     apiVersion: traefik.io/v1alpha1
     kind: Middleware
     metadata:
+      annotations:
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public-forwardauth
     spec:
       forwardAuth:
-        address: http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+        address: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth
         authResponseHeaders:
-          - Remote-User
-          - Remote-Groups
-          - Remote-Email
-          - Remote-Name
+          - Auth-Proxy-Email
+          - Auth-Proxy-Groups
         trustForwardHeader: true
-when stripPathPrefix is true, should add URLRewrite filter:
+when forwardAuth has no appName, should build the middleware from the full inline spec:
   1: |
     apiVersion: gateway.networking.k8s.io/v1
     kind: HTTPRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       hostnames:
@@ -74,8 +78,223 @@ when stripPathPrefix is true, should add URLRewrite filter:
       parentRefs:
         - group: gateway.networking.k8s.io
           kind: Gateway
-          name: http-public
-          namespace: dev-gateway
+          name: traefik-public
+          namespace: gateway-test
+      rules:
+        - backendRefs:
+            - group: ""
+              kind: Service
+              name: RELEASE-NAME
+              namespace: NAMESPACE
+              port: 80
+              weight: 1
+          filters:
+            - extensionRef:
+                group: traefik.io
+                kind: Middleware
+                name: RELEASE-NAME-public-forwardauth
+              type: ExtensionRef
+          matches:
+            - path:
+                type: PathPrefix
+                value: /
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public-forwardauth
+    spec:
+      forwardAuth:
+        addAuthCookiesToResponse:
+          - Session
+        address: http://custom.auth.svc.cluster.local/verify
+        authRequestHeaders:
+          - Accept
+          - X-Forwarded-Method
+        authResponseHeaders:
+          - X-Custom-User
+          - X-Custom-Groups
+        authResponseHeadersRegex: ^X-Custom-
+        authSigninURL: https://auth.example.com/sign_in
+        forwardBody: true
+        headerField: X-Auth-User
+        maxBodySize: 1048576
+        maxResponseBodySize: 2097152
+        preserveLocationHeader: true
+        preserveRequestMethod: true
+        tls:
+          caSecret: auth-ca
+          certSecret: auth-cert
+          insecureSkipVerify: true
+        trustForwardHeader: true
+when forwardAuth passthrough set, should add a rule routing the path to the provider service without the forwardAuth filter:
+  1: |
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public
+    spec:
+      hostnames:
+        - test.example.com
+      parentRefs:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: traefik-public
+          namespace: gateway-test
+      rules:
+        - backendRefs:
+            - group: ""
+              kind: Service
+              name: oauth2proxy
+              namespace: auth
+              port: 80
+              weight: 1
+          matches:
+            - path:
+                type: PathPrefix
+                value: /oauth2/
+        - backendRefs:
+            - group: ""
+              kind: Service
+              name: RELEASE-NAME
+              namespace: NAMESPACE
+              port: 80
+              weight: 1
+          filters:
+            - extensionRef:
+                group: traefik.io
+                kind: Middleware
+                name: RELEASE-NAME-public-forwardauth
+              type: ExtensionRef
+          matches:
+            - path:
+                type: PathPrefix
+                value: /
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public-forwardauth
+    spec:
+      forwardAuth:
+        address: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth
+        authResponseHeaders:
+          - Auth-Proxy-Email
+          - Auth-Proxy-Groups
+        trustForwardHeader: true
+when passthrough set without appName, should route the path to the inline service:
+  1: |
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public
+    spec:
+      hostnames:
+        - test.example.com
+      parentRefs:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: traefik-public
+          namespace: gateway-test
+      rules:
+        - backendRefs:
+            - group: ""
+              kind: Service
+              name: oauth2proxy
+              namespace: auth
+              port: 4180
+              weight: 1
+          matches:
+            - path:
+                type: PathPrefix
+                value: /oauth2/
+        - backendRefs:
+            - group: ""
+              kind: Service
+              name: RELEASE-NAME
+              namespace: NAMESPACE
+              port: 80
+              weight: 1
+          filters:
+            - extensionRef:
+                group: traefik.io
+                kind: Middleware
+                name: RELEASE-NAME-public-forwardauth
+              type: ExtensionRef
+          matches:
+            - path:
+                type: PathPrefix
+                value: /
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public-forwardauth
+    spec:
+      forwardAuth:
+        address: http://custom.auth.svc.cluster.local/verify
+when stripPathPrefix is true, should add URLRewrite filter:
+  1: |
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public
+    spec:
+      hostnames:
+        - test.example.com
+      parentRefs:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: traefik-public
+          namespace: gateway-test
       rules:
         - backendRefs:
             - group: ""

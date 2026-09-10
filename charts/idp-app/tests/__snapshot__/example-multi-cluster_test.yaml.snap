@@ -75,7 +75,7 @@ should match snapshot:
       parentRefs:
         - group: gateway.networking.k8s.io
           kind: Gateway
-          name: http-public
+          name: traefik-public
           namespace: gateway
       rules:
         - backendRefs:

@@ -106,6 +106,80 @@ tests:
           appName: oauth2proxy2
     asserts:
       - matchSnapshot: { }
+  - it: when oauth2ProxyAuth is enabled on a traefik class, then reference the forwardAuth middleware instead of nginx annotations
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-public
+        oauth2ProxyAuth:
+          enabled: true
+    asserts:
+      - matchSnapshot: { }
+  - it: when fcgi is set on a traefik class, then fail
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-private
+        fcgi:
+          documentRoot: /html
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress: fcgi backend is not supported on traefik ingress classes"
+  - it: when basicAuth is enabled on a traefik class, then fail
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-private
+        basicAuth:
+          enabled: true
+          secretName: basic-auth
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress: basicAuth is not supported on traefik ingress classes"
+  - it: when rewriteTarget is set on a traefik class, then fail
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-private
+        rewriteTarget: /api
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress: rewriteTarget is not supported on traefik ingress classes"
+  - it: when stripPathPrefix is set on a nginx class, then fail
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        stripPathPrefix: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "ingress: stripPathPrefix is not supported on nginx ingress classes"
+  - it: when stripPathPrefix is set on a traefik class, then emit StripPrefix middleware and router.middlewares annotation
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-private
+        path: /app
+        stripPathPrefix: true
+    asserts:
+      - matchSnapshot: {}
   - it: when service.enabled and ingress.service.port is set, use port override
     values:
       - values/deployment.yaml

@@ -3,6 +3,22 @@
 {{- range $ingressKey, $ingressSpec := $ingresses }}
 {{- if $ingressSpec.enabled -}}
 {{- $ingress := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.ingress) (deepCopy $ingressSpec) }}
+{{- $ingressClassName := required "ingress.className required" $ingress.className }}
+{{- $isTraefikClass := hasPrefix "traefik" $ingressClassName }}
+{{- $svcPort := hasKey $ingress "fcgi" | ternary "fcgi" "http" }}
+{{- if $isTraefikClass }}
+{{- /* these features are implemented with nginx-only annotations; fail instead of silently dropping them */}}
+{{- if eq $svcPort "fcgi" }}{{- fail "ingress: fcgi backend is not supported on traefik ingress classes" }}{{- end }}
+{{- if $ingress.basicAuth.enabled }}{{- fail "ingress: basicAuth is not supported on traefik ingress classes" }}{{- end }}
+{{- if $ingress.rewriteTarget }}{{- fail "ingress: rewriteTarget is not supported on traefik ingress classes" }}{{- end }}
+{{- else }}
+{{- if $ingress.stripPathPrefix }}{{- fail "ingress: stripPathPrefix is not supported on nginx ingress classes" }}{{- end }}
+{{- end }}
+{{- $stripPrefixMiddlewareName := join "-" (compact (list (include "idp-app.fullname" $) $ingressKey "strippathprefix")) }}
+{{- $gateway := dict }}
+{{- if $isTraefikClass }}
+{{- $gateway = fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $ingressClassName)) }}
+{{- end }}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
@@ -25,9 +41,18 @@
 {{- else }}
 {{- $host = ($ingress.host | required "ingress: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
 {{- end }}
-{{- $ingressClassName := required "ingress.className required" $ingress.className }}
-{{- $svcPort := hasKey $ingress "fcgi" | ternary "fcgi" "http" }}
 {{- $fcgiConfigMapName := printf "%s-ingress-fcgi" $ingressName }}
+{{- $tlsSecretName := printf "%s-ingress-tls" $ingressName }}
+{{- if kindIs "map" $ingress.tls }}
+{{- $tlsSecretName = tpl ($ingress.tls.secretName | required "ingress: tls.secretName is required") $ }}
+{{- end }}
+{{- $traefikMiddlewares := list }}
+{{- if and $isTraefikClass $ingress.oauth2ProxyAuth.enabled }}
+{{- $traefikMiddlewares = append $traefikMiddlewares (printf "%s-%s-oauth2@kubernetescrd" $.Release.Namespace $ingressName) }}
+{{- end }}
+{{- if and $isTraefikClass $ingress.stripPathPrefix }}
+{{- $traefikMiddlewares = append $traefikMiddlewares (printf "%s-%s@kubernetescrd" $.Release.Namespace $stripPrefixMiddlewareName) }}
+{{- end }}
 {{- if eq $svcPort "fcgi" }}
 apiVersion: v1
 kind: ConfigMap
@@ -45,6 +70,9 @@ metadata:
   name: {{ $ingressName }}
   labels:
     {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   annotations:
     {{- if $ingress.certManagerClusterIssuer }}
     cert-manager.io/cluster-issuer: {{ $ingress.certManagerClusterIssuer }}
@@ -61,7 +89,14 @@ metadata:
     nginx.ingress.kubernetes.io/auth-secret: {{ required "ingress.basicAuth.secretName required" $ingress.basicAuth.secretName }}
     nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required'
     {{- end }}
+    {{- if $traefikMiddlewares }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ join "," $traefikMiddlewares }}
+    {{- end }}
     {{- if $ingress.oauth2ProxyAuth.enabled }}
+    {{- if $isTraefikClass }}
+    {{- /* traefik has no auth-url annotation equivalent; auth is enforced by the forwardAuth
+           Middleware chain rendered by ingress-oauth2-middlewares.yaml */}}
+    {{- else }}
     {{- $oauth2ProxyApp := include "idp-app.clusterConfigMapValue" (list $ "apps" $ingress.oauth2ProxyAuth.appName) | fromYaml }}
     {{- $_ := $oauth2ProxyApp.path | required "oauth2proxy: path required" }}
     {{- $authUrl       := printf "%s%s" ($oauth2ProxyApp.authUrl | required "oauth2proxy: authUrl required") $oauth2ProxyApp.path }}
@@ -73,10 +108,16 @@ metadata:
     nginx.ingress.kubernetes.io/auth-snippet: |
       proxy_set_header X-Forwarded-Host {{ $host }};
     {{- end }}
+    {{- end }}
     {{- if $ingress.rewriteTarget }}
     nginx.ingress.kubernetes.io/rewrite-target: {{ $ingress.rewriteTarget }}/$2
     {{- end }}
+    {{- if not $isTraefikClass }}
     nginx.ingress.kubernetes.io/enable-access-log: {{ toString $ingress.accessLog.enabled | quote }}
+    {{- end }}
+    {{- with $gateway.annotationSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
     {{- if $ingress.annotations }}
     {{- toYaml $ingress.annotations | nindent 4 }}
     {{- end }}
@@ -85,7 +126,7 @@ spec:
   tls:
     - hosts:
         - {{ $host | quote }}
-      secretName: {{ $ingressName }}-ingress-tls
+      secretName: {{ $tlsSecretName }}
   rules:
     - host: {{ $host | quote }}
       http:
@@ -97,6 +138,26 @@ spec:
                 name: {{ tpl ($backendRef.name | required "ingress: service.name required") $ | quote }}
                 port:
                   number: {{ $backendRef.port | required "ingress: service.port required" }}
+---
+{{- end }}
+{{- if and $isTraefikClass $ingress.stripPathPrefix }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $stripPrefixMiddlewareName }}
+  labels:
+    {{- include "idp-app.labels" $ | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $gateway.annotationSelector }}
+  annotations:
+    {{- toYaml $gateway.annotationSelector | nindent 4 }}
+  {{- end }}
+spec:
+  stripPrefix:
+    prefixes:
+      - {{ $ingress.path | required "ingress: path required" }}
 ---
 {{- end }}
 {{- end }}

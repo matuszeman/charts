@@ -37,26 +37,46 @@
 #             namespace: gateway
 #             entryPoints:            # Traefik entry points (used by ingressRoutes)
 #               - websecure
-#             labelSelector: {}       # Extra labels added to HTTPRoute/IngressRoute/Middleware/TLSOption
-#             annotationSelector: {}  # Extra annotations added to IngressRoute/Middleware/TLSOption
-#         # Named apps — referenced by ingress.oauth2ProxyAuth.appName / httpRoutes.*.forwardAuth.appName
+#             labelSelector: {}       # Extra labels added to all routing resources (Ingress, HTTPRoute, IngressRoute, Middleware, TLSOption)
+#             annotationSelector: {}  # Extra annotations added to all routing resources (Ingress, HTTPRoute, IngressRoute, Middleware, TLSOption)
+#             traefik:
+#               useIngressClassNameOnRoutes: false  # set spec.ingressClassName on IngressRoute using gateway name (Traefik v3+)
+#         # Named apps — referenced by ingress.oauth2ProxyAuth.appName / httpRoutes.*.forwardAuth.appName / ingressRoutes.*.forwardAuth.appName
 #         apps:
 #           authelia:
-#             # nginx ingress oauth2-proxy auth settings
+#             # nginx ingress oauth2-proxy auth settings (ingress only)
 #             authUrl:     http://authelia.auth.svc.cluster.local
 #             signinUrl:   https://auth.example.com
 #             path:        /oauth2
 #             responseHeaders:
 #               - Auth-Proxy-Email
 #               - Auth-Proxy-Groups
-#             # Traefik forwardAuth middleware settings
-#             traefik:
-#               forwardAuthMiddleware:
-#                 address:              http://authelia.auth.svc.cluster.local/api/authz/forward-auth
-#                 trustForwardHeader:   true
-#                 authResponseHeaders:
-#                   - Remote-User
-#                   - Remote-Groups
+#             # Provider service — passthrough target when a route sets forwardAuth.passthrough
+#             service:
+#               name:      authelia
+#               namespace: auth
+#               port:      80
+#             # Provider-agnostic forwardAuth settings for ingressRoutes / httpRoutes.
+#             # Generic (controller-agnostic) fields live at the top; controller-specific
+#             # settings live under controllers.<controller>. For a traefik gateway:
+#             #   authUrl   -> forwardAuth Middleware `address`   (supports tpl)
+#             #   signinUrl -> forwardAuth Middleware `authSigninURL` (supports tpl; native 401 -> sign-in,
+#             #                Traefik 3.1+; its {url} return-URL token is a Traefik substitution)
+#             #   authResponseHeaders -> forwardAuth Middleware `authResponseHeaders`
+#             #   controllers.traefik.middlewareParams -> raw forwardAuth Middleware fields
+#             forwardAuth:
+#               authUrl:              http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+#               # signinUrl:          https://auth.example.com/?rd={url}
+#               authResponseHeaders:
+#                 - Remote-User
+#                 - Remote-Groups
+#               # Controller-specific settings:
+#               controllers:
+#                 traefik:
+#                   # raw forwardAuth Middleware fields, merged verbatim into spec.forwardAuth
+#                   middlewareParams:
+#                     trustForwardHeader: true
+#                     # authRequestHeaders / addAuthCookiesToResponse / tls / headerField / ...
 #
 #     # Chart-wide defaults (merged with per-chart ingress / httpRoute / configs values)
 #     defaults:
@@ -737,9 +757,13 @@ ingress: {}
 #   # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
 #
 #   path: /                            # URL path prefix
-#   # rewriteTarget: /                 # Rewrite the path before forwarding (nginx rewrite-target)
+#   # rewriteTarget: /                 # Rewrite the path before forwarding (nginx only; not supported on traefik ingress classes)
+#   # stripPathPrefix: true            # Strip the ingress path prefix before forwarding (traefik only).
+#   #                                  # Emits a StripPrefix Middleware and wires it via router.middlewares annotation.
 #
 #   certManagerClusterIssuer: letsencrypt-prod  # Annotate with cert-manager issuer for TLS
+#   # tls:
+#   #   secretName: my-tls-secret        # Override TLS secret name (supports tpl). Defaults to <ingressName>-ingress-tls.
 #   annotations:
 #     nginx.ingress.kubernetes.io/proxy-body-size: "50m"
 #
@@ -795,9 +819,7 @@ httpRoutes: {}
 #     enabled: true
 #     gatewayName: http-public         # Named gateway from clusters.<cluster>.httpGateways
 #
-#     # Host resolution (pick one):
-#     #
-#     # Option A — single host via domain + host (or host alone as FQDN):
+#     # Host resolution (same as ingress — domain + host, or host alone):
 #     domain: example.com
 #     host: my-app                     # Results in my-app.example.com
 #     # host: my-app.example.com       # Without domain: used as full FQDN directly
@@ -806,18 +828,12 @@ httpRoutes: {}
 #     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
 #     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
 #
-#     # Option B — multiple explicit hostnames (FQDNs; supports __DEPLOYMENT_ID__):
-#     # hosts:
-#     #   - my-app.example.com
-#     #   - my-app.other.com
-#
 #     # __DEPLOYMENT_ID__ placeholder (for deployment.multi):
 #     # host: __DEPLOYMENT_ID__          # replaced with each deployment key → one.example.com, two.example.com
 #     # domain: <HOST.>example.com       # also works with domain placeholder: one.example.com, two.example.com
 #
 #     path: /                          # [required] URL path to match
 #     pathType: PathPrefix             # PathPrefix | Exact | RegularExpression
-#     # stripPathPrefix: false         # Strip the path prefix before forwarding (adds URLRewrite filter)
 #
 #     annotations: {}                  # Annotations added to the HTTPRoute resource
 #
@@ -839,12 +855,24 @@ httpRoutes: {}
 #     #    service:
 #     #      port: 9090                # [required] Port number or name from service.additionalPorts
 #
-#     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically)
+#     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically).
+#     # Only supported on gateways with controller: traefik.
 #     # forwardAuth:
 #     #   enabled: true
-#     #   appName: authelia            # Named app from clusters.<cluster>.apps
+#     #   appName: authelia            # Named app from clusters.<cluster>.apps.
+#     #                                # Optional: omit to configure everything inline below.
 #     #   authQueryParams:             # Optional query params appended to the auth address
-#     #     allowed_groups: admins,editors
+#     #     allowed_groups: admins     # (e.g. oauth2-proxy group restriction)
+#     #   passthrough:                 # Optional: route a path prefix straight to the provider
+#     #     path: /oauth2              # service (apps.<appName>.service), bypassing the middleware
+#     #                                # — needed for single-app oauth2-proxy/authentik. A cross-
+#     #                                # namespace service needs your own ReferenceGrant/allowCrossNamespace.
+#     #   # Same forwardAuth fields as on the app override it here (or define it when appName is unset):
+#     #   # authUrl: http://authelia.auth.svc.cluster.local/api/authz/forward-auth   # generic
+#     #   # signinUrl: https://auth.example.com/?rd={url}                            # generic
+#     #   # authResponseHeaders: [Remote-User, Remote-Groups]                        # generic
+#     #   # controllers: { traefik: { middlewareParams: { trustForwardHeader: true } } }   # controller-specific
+#     #   # service: { name: authelia, namespace: auth, port: 80 }   # passthrough target when no appName
 
 # ---------------------------------------------------------------------------
 # Traefik IngressRoutes (traefik.io/v1alpha1)
@@ -864,9 +892,7 @@ ingressRoutes: {}
 #     enabled: true
 #     gatewayName: http-public            # [required] Named gateway from clusters.<cluster>.httpGateways
 #
-#     # Host resolution (pick one):
-#     #
-#     # Option A — single host via domain + host (or host alone as FQDN):
+#     # Host resolution (same as httpRoutes — domain + host, or host alone):
 #     domain: example.com
 #     host: my-app                       # Results in my-app.example.com
 #     # host: my-app.example.com         # Without domain: used as full FQDN directly
@@ -875,17 +901,11 @@ ingressRoutes: {}
 #     # domain: <HOST.>dev.example.com   # host: aaa → aaa.dev.example.com; no host → dev.example.com
 #     # domain: <HOST->dev.example.com   # host: aaa → aaa-dev.example.com; no host → dev.example.com
 #
-#     # Option B — multiple explicit hostnames (FQDNs; supports __DEPLOYMENT_ID__):
-#     # hosts:
-#     #   - my-app.example.com
-#     #   - my-app.other.com
-#
 #     # __DEPLOYMENT_ID__ placeholder (for deployment.multi):
 #     # host: __DEPLOYMENT_ID__          # replaced with each deployment key → one.example.com, two.example.com
 #
 #     path: /                            # [required] URL path to match
 #     pathType: PathPrefix               # PathPrefix | Exact | RegularExpression
-#     # stripPathPrefix: false           # Strip the path prefix before forwarding (generates a StripPrefix Middleware)
 #
 #     tls:                                # TLS config for IngressRoute
 #       secretName: my-tls-secret         # [required] Name of Secret containing the TLS certificate (supports tpl)
@@ -929,12 +949,23 @@ ingressRoutes: {}
 #     #    service:
 #     #      port: 9090                  # [required] Port number or name from service.additionalPorts
 #
-#     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically)
+#     # Forward-auth via Traefik Middleware (creates a Middleware resource automatically).
 #     # forwardAuth:
 #     #   enabled: true
-#     #   appName: authelia              # Named app from clusters.<cluster>.apps
+#     #   appName: authelia              # Named app from clusters.<cluster>.apps.
+#     #                                  # Optional: omit to configure everything inline below.
 #     #   authQueryParams:               # Optional query params appended to the auth address
-#     #     allowed_groups: admins,editors
+#     #     allowed_groups: admins       # (e.g. oauth2-proxy group restriction)
+#     #   passthrough:                   # Optional: route a path prefix straight to the provider
+#     #     path: /oauth2                # service (apps.<appName>.service), bypassing the middleware
+#     #                                  # — needed for single-app oauth2-proxy/authentik. A cross-
+#     #                                  # namespace service needs your own ReferenceGrant/allowCrossNamespace.
+#     #   # Same forwardAuth fields as on the app override it here (or define it when appName is unset):
+#     #   # authUrl: http://authelia.auth.svc.cluster.local/api/authz/forward-auth   # generic
+#     #   # signinUrl: https://auth.example.com/?rd={url}                            # generic
+#     #   # authResponseHeaders: [Remote-User, Remote-Groups]                        # generic
+#     #   # controllers: { traefik: { middlewareParams: { trustForwardHeader: true } } }   # controller-specific
+#     #   # service: { name: authelia, namespace: auth, port: 80 }   # passthrough target when no appName
 
 # ---------------------------------------------------------------------------
 # Autoscaling (HorizontalPodAutoscaler)

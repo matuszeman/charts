@@ -1,0 +1,108 @@
+suite: ingress oauth2 middlewares
+templates:
+  - ingress-oauth2-middlewares.yaml
+values:
+  - values/minimum.yaml
+tests:
+  - it: no documents when oauth2ProxyAuth is disabled
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-public
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: no documents on a nginx class even with oauth2ProxyAuth enabled
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: nginx-external
+        oauth2ProxyAuth:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: renders chain, auth, errors, signin-host, ExternalName service and passthrough for a cross-namespace oauth2proxy
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-public
+        oauth2ProxyAuth:
+          enabled: true
+    asserts:
+      - hasDocuments:
+          count: 6
+      - matchSnapshot: { }
+  - it: signin-host middleware pins X-Forwarded-Host to the signinUrl host and is attached to the passthrough
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-public
+        oauth2ProxyAuth:
+          enabled: true
+    asserts:
+      - documentIndex: 2
+        equal:
+          path: spec.errors.query
+          value: /oauth2/sign_in?rd=https%3A%2F%2Ftestapp.example.com{url}
+      - documentIndex: 3
+        equal:
+          path: metadata.name
+          value: RELEASE-NAME-oauth2-signin-host
+      - documentIndex: 3
+        equal:
+          path: spec.headers.customRequestHeaders["X-Forwarded-Host"]
+          value: oauth2proxy.auth.example.com
+      - documentIndex: 5
+        equal:
+          path: metadata.name
+          value: RELEASE-NAME-oauth2-passthrough
+      - documentIndex: 5
+        equal:
+          path: metadata.annotations["traefik.ingress.kubernetes.io/router.middlewares"]
+          value: NAMESPACE-RELEASE-NAME-oauth2-signin-host@kubernetescrd
+  - it: appends allowed_groups to the forwardAuth address
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-public
+        oauth2ProxyAuth:
+          enabled: true
+          allowedGroups:
+            - one@example.com
+            - two@example.com
+    asserts:
+      - matchSnapshot: { }
+  - it: uses the service directly without ExternalName when oauth2proxy is in the release namespace
+    values:
+      - values/deployment.yaml
+      - values/service.yaml
+      - values/ingress-minimum.yaml
+    set:
+      ingress:
+        className: traefik-public
+        oauth2ProxyAuth:
+          enabled: true
+          service:
+            name: oauth2proxy
+            namespace: NAMESPACE
+            port: 80
+    asserts:
+      - hasDocuments:
+          count: 5
+      - matchSnapshot: { }
