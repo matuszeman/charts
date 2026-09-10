@@ -3,6 +3,8 @@
 {{- if $routeSpec.enabled }}
 {{- $route := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.httpRoute) (deepCopy $routeSpec) }}
 {{- $gateway := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $route.gatewayName)) }}
+{{- $fa := include "idp-app.forwardAuth.resolve" (list $ $route $routeKey $gateway) | fromYaml }}
+{{- $forwardAuthEnabled := $fa.enabled }}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
@@ -46,9 +48,14 @@ metadata:
     {{- with $gateway.labelSelector }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if $route.annotations }}
+  {{- if or $route.annotations $gateway.annotationSelector }}
   annotations:
-    {{- toYaml $route.annotations | nindent 4 }}
+    {{- with $gateway.annotationSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $route.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   parentRefs:
@@ -61,13 +68,28 @@ spec:
     - {{ . | quote }}
     {{- end }}
   rules:
+    {{- if and $forwardAuthEnabled $fa.passthrough }}
+    {{- /* passthrough path -> auth provider service; no forwardAuth filter. Gateway API
+           resolves precedence by path specificity, so no explicit priority is needed. */}}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ $fa.passthrough }}
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: {{ $fa.backend.name | required "forwardAuth.passthrough: service.name required (set apps.<appName>.service or forwardAuth.service)" }}
+          namespace: {{ $fa.backend.namespace }}
+          port: {{ $fa.backend.port | required "forwardAuth.passthrough: service.port required" }}
+          weight: 1
+    {{- end }}
     - matches:
         - path:
             type: {{ $pathType }}
             value: {{ $route.path | required "httpRoute: path required" }}
-      {{- if or $route.filters $route.stripPathPrefix (and $route.forwardAuth $route.forwardAuth.enabled) }}
+      {{- if or $route.filters $route.stripPathPrefix $forwardAuthEnabled }}
       filters:
-        {{- if and $route.forwardAuth $route.forwardAuth.enabled }}
+        {{- if $forwardAuthEnabled }}
         {{- if eq $gatewayController "traefik" }}
         - type: ExtensionRef
           extensionRef:
@@ -98,30 +120,8 @@ spec:
           weight: 1
 ---
 {{- end }}
-{{- if and $route.forwardAuth $route.forwardAuth.enabled }}
-{{- $forwardAuthApp := include "idp-app.clusterConfigMapValue" (list $ "apps" $route.forwardAuth.appName) | fromYaml }}
-{{- $traefikConfig := $forwardAuthApp.traefik.forwardAuthMiddleware | required "forwardAuth: app.traefik.forwardAuthMiddleware required" }}
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-forwardauth
-  labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
-    {{- with $gateway.labelSelector }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- if $route.annotations }}
-  annotations:
-    {{- toYaml $route.annotations | nindent 4 }}
-  {{- end }}
-spec:
-  forwardAuth:
-    {{- $address := $traefikConfig.address }}
-    {{- with $route.forwardAuth.authQueryParams }}
-    {{-   $address = printf "%s?%s" $address (include "idp-app.queryString" .) }}
-    {{- end }}
-    {{- omit $traefikConfig "address" | toYaml | nindent 4 }}
-    address: "{{ $address }}"
+{{- if $forwardAuthEnabled }}
+{{ include "idp-app.forwardAuth.middleware" (list $ $route $routeKey $gateway) }}
 ---
 {{- end }}
 {{- end }}

@@ -1,7 +1,7 @@
 httpRoutes:
   public:
     enabled: true
-    gatewayName: http-public
+    gatewayName: traefik-public
     domain: example.com
     host: test
     path: /

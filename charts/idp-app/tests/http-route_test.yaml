@@ -11,7 +11,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: example.com
           host: test
           path: /
@@ -27,15 +27,17 @@ tests:
               app.kubernetes.io/instance: RELEASE-NAME
               app.kubernetes.io/version: 0.1.0
               app.kubernetes.io/managed-by: Helm
-              traefik.io/controller: traefik-private
+              traefik.io/controller: traefik-public
+            annotations:
+              traefik.io/controller: traefik-public
       - equal:
           path: spec
           value:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: http-public
-                namespace: dev-gateway
+                name: traefik-public
+                namespace: gateway-test
             hostnames:
               - "test.example.com"
             rules:
@@ -57,14 +59,14 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: example.com
           host: test
           path: /
-          # https://www.authelia.com/reference/guides/proxy-authorization/#implementations
+          # https://oauth2-proxy.github.io/oauth2-proxy/features/endpoints#auth
           forwardAuth:
             enabled: true
-            appName: authelia
+            appName: oauth2proxy
     asserts:
       - matchSnapshot: { }
 
@@ -75,20 +77,185 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: example.com
           host: test
           path: /
           forwardAuth:
             enabled: true
-            appName: authelia
+            appName: oauth2proxy
             authQueryParams:
               allowed_groups: admins
     asserts:
       - documentIndex: 1
         equal:
           path: spec.forwardAuth.address
-          value: "http://authelia.auth.svc.cluster.local/api/authz/forward-auth?allowed_groups=admins"
+          value: "http://oauth2proxy.auth.svc.cluster.local/oauth2/auth?allowed_groups=admins"
+
+  - it: when authUrl/signinUrl use templating, should render them with tpl
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: traefik-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            authUrl: 'http://auth.{{ .Release.Namespace }}.svc.cluster.local/verify'
+            signinUrl: 'https://signin.{{ .Release.Namespace }}.example.com/start'
+    asserts:
+      - documentIndex: 1
+        equal:
+          path: spec.forwardAuth.address
+          value: "http://auth.NAMESPACE.svc.cluster.local/verify"
+      - documentIndex: 1
+        equal:
+          path: spec.forwardAuth.authSigninURL
+          value: "https://signin.NAMESPACE.example.com/start"
+
+  - it: when forwardAuth passthrough set, should add a rule routing the path to the provider service without the forwardAuth filter
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: traefik-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            appName: oauth2proxy
+            passthrough:
+              path: /oauth2/
+    asserts:
+      - matchSnapshot: { }
+
+  - it: when forwardAuth has no appName, should build the middleware from the full inline spec
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: traefik-public
+          domain: example.com
+          host: test
+          path: /
+          # exercises the generic fields + every traefik-specific forwardAuth Middleware field
+          forwardAuth:
+            enabled: true
+            # generic, controller-agnostic
+            authUrl: http://custom.auth.svc.cluster.local/verify
+            signinUrl: https://auth.example.com/sign_in
+            authResponseHeaders:
+              - X-Custom-User
+              - X-Custom-Groups
+            # traefik-specific raw forwardAuth Middleware fields
+            controllers:
+              traefik:
+                middlewareParams:
+                  trustForwardHeader: true
+                  authResponseHeadersRegex: "^X-Custom-"
+                  authRequestHeaders:
+                    - Accept
+                    - X-Forwarded-Method
+                  addAuthCookiesToResponse:
+                    - Session
+                  forwardBody: true
+                  maxBodySize: 1048576
+                  maxResponseBodySize: 2097152
+                  headerField: X-Auth-User
+                  preserveLocationHeader: true
+                  preserveRequestMethod: true
+                  tls:
+                    caSecret: auth-ca
+                    certSecret: auth-cert
+                    insecureSkipVerify: true
+    asserts:
+      - matchSnapshot: { }
+
+  - it: when route sets forwardAuth fields, should override the app forwardAuth config
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: traefik-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            appName: oauth2proxy
+            authResponseHeaders:
+              - Remote-User
+            controllers:
+              traefik:
+                middlewareParams:
+                  trustForwardHeader: false
+    asserts:
+      - documentIndex: 1
+        equal:
+          path: spec.forwardAuth.trustForwardHeader
+          value: false
+      - documentIndex: 1
+        equal:
+          path: spec.forwardAuth.authResponseHeaders
+          value:
+            - Remote-User
+
+  - it: when app forwardAuth has controllers override, should merge the matching controller block and drop controllers key
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: traefik-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            appName: oauth2proxy2
+    asserts:
+      - documentIndex: 1
+        equal:
+          path: spec.forwardAuth.trustForwardHeader
+          value: true
+      - documentIndex: 1
+        notExists:
+          path: spec.forwardAuth.controllers
+
+  - it: when passthrough set without appName, should route the path to the inline service
+    values:
+      - values/service.yaml
+    set:
+      httpRoutes:
+        public:
+          enabled: true
+          gatewayName: traefik-public
+          domain: example.com
+          host: test
+          path: /
+          forwardAuth:
+            enabled: true
+            authUrl: http://custom.auth.svc.cluster.local/verify
+            passthrough:
+              path: /oauth2/
+            service:
+              name: oauth2proxy
+              namespace: auth
+              port: 4180
+    asserts:
+      - matchSnapshot: { }
 
   - it: when forwardAuth enabled with unsupported gateway controller, should fail
     values:
@@ -99,20 +266,20 @@ tests:
           clusters:
             test:
               httpGateways:
-                http-public:
+                traefik-public:
                   controller: istio
-                  name: http-public
-                  namespace: dev-gateway
+                  name: traefik-public
+                  namespace: gateway-test
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: example.com
           host: test
           path: /
           forwardAuth:
             enabled: true
-            appName: authelia
+            appName: oauth2proxy
     asserts:
       - failedTemplate:
           errorMessage: "forwardAuth filter is only supported with traefik gateway controller"
@@ -124,7 +291,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           host: myapp.example.com
           path: /
     asserts:
@@ -139,7 +306,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: nonexistent
           path: /
     asserts:
@@ -152,7 +319,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: host-dot-dev
           host: aaa
           path: /
@@ -168,7 +335,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: host-dash-dev
           host: aaa
           path: /
@@ -184,7 +351,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: host-under-dev
           host: aaa
           path: /
@@ -200,7 +367,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: host-dot-dev
           path: /
     asserts:
@@ -215,7 +382,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: host-dash-dev
           path: /
     asserts:
@@ -231,7 +398,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: example.com
           host: __DEPLOYMENT_ID__
           path: /
@@ -245,7 +412,9 @@ tests:
               app.kubernetes.io/instance: RELEASE-NAME-one
               app.kubernetes.io/version: 0.1.0
               app.kubernetes.io/managed-by: Helm
-              traefik.io/controller: traefik-private
+              traefik.io/controller: traefik-public
+            annotations:
+              traefik.io/controller: traefik-public
         documentIndex: 0
       - equal:
           path: spec
@@ -253,8 +422,8 @@ tests:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: http-public
-                namespace: dev-gateway
+                name: traefik-public
+                namespace: gateway-test
             hostnames:
               - "one.example.com"
             rules:
@@ -279,7 +448,9 @@ tests:
               app.kubernetes.io/instance: RELEASE-NAME-two
               app.kubernetes.io/version: 0.1.0
               app.kubernetes.io/managed-by: Helm
-              traefik.io/controller: traefik-private
+              traefik.io/controller: traefik-public
+            annotations:
+              traefik.io/controller: traefik-public
         documentIndex: 1
       - equal:
           path: spec
@@ -287,8 +458,8 @@ tests:
             parentRefs:
               - group: gateway.networking.k8s.io
                 kind: Gateway
-                name: http-public
-                namespace: dev-gateway
+                name: traefik-public
+                namespace: gateway-test
             hostnames:
               - "two.example.com"
             rules:
@@ -312,7 +483,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: example.com
           host: test
           path: /api
@@ -327,7 +498,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           hosts:
             - my-app.example.com
             - my-app.other.com
@@ -346,7 +517,7 @@ tests:
       httpRoutes:
         public:
           enabled: true
-          gatewayName: http-public
+          gatewayName: traefik-public
           domain: example.com
           host: test
           path: /api

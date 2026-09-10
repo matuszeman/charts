@@ -4,13 +4,13 @@ multi support:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-one
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-one-public
     spec:
       entryPoints:
@@ -28,13 +28,13 @@ multi support:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-two
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-two-public
     spec:
       entryPoints:
@@ -53,13 +53,13 @@ should create IngressRoute:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -78,13 +78,13 @@ should create IngressRoute with Exact pathType:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -103,13 +103,13 @@ should create IngressRoute with RegularExpression pathType:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -128,13 +128,13 @@ should support external service backend:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -153,13 +153,13 @@ when forwardAuth enabled, should add middleware and generate Middleware resource
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -179,22 +179,139 @@ when forwardAuth enabled, should add middleware and generate Middleware resource
     kind: Middleware
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public-forwardauth
     spec:
       forwardAuth:
-        address: http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+        address: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth
         authResponseHeaders:
-          - Remote-User
-          - Remote-Groups
-          - Remote-Email
-          - Remote-Name
+          - Auth-Proxy-Email
+          - Auth-Proxy-Groups
+        trustForwardHeader: true
+when forwardAuth has no appName, should build the middleware from the full inline spec:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/`)
+          middlewares:
+            - name: RELEASE-NAME-public-forwardauth
+          services:
+            - name: RELEASE-NAME
+              port: 80
+      tls:
+        secretName: RELEASE-NAME-tls
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public-forwardauth
+    spec:
+      forwardAuth:
+        addAuthCookiesToResponse:
+          - Session
+        address: http://custom.auth.svc.cluster.local/verify
+        authRequestHeaders:
+          - Accept
+          - X-Forwarded-Method
+        authResponseHeaders:
+          - X-Custom-User
+          - X-Custom-Groups
+        authResponseHeadersRegex: ^X-Custom-
+        authSigninURL: https://auth.example.com/sign_in
+        forwardBody: true
+        headerField: X-Auth-User
+        maxBodySize: 1048576
+        maxResponseBodySize: 2097152
+        preserveLocationHeader: true
+        preserveRequestMethod: true
+        tls:
+          caSecret: auth-ca
+          certSecret: auth-cert
+          insecureSkipVerify: true
+        trustForwardHeader: true
+when forwardAuth passthrough set, should add a higher-priority route to the provider service and no middleware on it:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/oauth2`)
+          priority: 100
+          services:
+            - name: oauth2proxy
+              namespace: auth
+              port: 80
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/`)
+          middlewares:
+            - name: RELEASE-NAME-public-forwardauth
+          priority: 10
+          services:
+            - name: RELEASE-NAME
+              port: 80
+      tls:
+        secretName: RELEASE-NAME-tls
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public-forwardauth
+    spec:
+      forwardAuth:
+        address: http://oauth2proxy.auth.svc.cluster.local/oauth2/auth
+        authResponseHeaders:
+          - Auth-Proxy-Email
+          - Auth-Proxy-Groups
         trustForwardHeader: true
 when host is FQDN (no domain), should use host directly:
   1: |
@@ -202,13 +319,13 @@ when host is FQDN (no domain), should use host directly:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -221,19 +338,70 @@ when host is FQDN (no domain), should use host directly:
               port: 80
       tls:
         secretName: RELEASE-NAME-tls
+when passthrough set without appName, should route the path to the inline service:
+  1: |
+    apiVersion: traefik.io/v1alpha1
+    kind: IngressRoute
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public
+    spec:
+      entryPoints:
+        - websecure
+      routes:
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/oauth2/`)
+          priority: 100
+          services:
+            - name: oauth2proxy
+              namespace: auth
+              port: 4180
+        - kind: Rule
+          match: Host(`test.example.com`) && PathPrefix(`/`)
+          middlewares:
+            - name: RELEASE-NAME-public-forwardauth
+          priority: 10
+          services:
+            - name: RELEASE-NAME
+              port: 80
+      tls:
+        secretName: RELEASE-NAME-tls
+  2: |
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      annotations:
+        traefik.io/controller: traefik-public
+      labels:
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: app-name
+        app.kubernetes.io/version: 0.1.0
+        traefik.io/controller: traefik-public
+      name: RELEASE-NAME-public-forwardauth
+    spec:
+      forwardAuth:
+        address: http://custom.auth.svc.cluster.local/verify
 when service.enabled and ingressRoute.service.port is set, use port override:
   1: |
     apiVersion: traefik.io/v1alpha1
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -252,13 +420,13 @@ when stripPathPrefix is true, should create StripPrefix Middleware and reference
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -278,13 +446,13 @@ when stripPathPrefix is true, should create StripPrefix Middleware and reference
     kind: Middleware
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public-strippathprefix
     spec:
       stripPrefix:
@@ -296,13 +464,13 @@ when tlsOption clientAuth uses only secretNames, should reference existing secre
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -322,13 +490,13 @@ when tlsOption clientAuth uses only secretNames, should reference existing secre
     kind: TLSOption
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       clientAuth:
@@ -343,13 +511,13 @@ when tlsOption is set, should generate TLSOption and reference it in IngressRout
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       entryPoints:
@@ -369,13 +537,13 @@ when tlsOption is set, should generate TLSOption and reference it in IngressRout
     kind: TLSOption
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: app-name
         app.kubernetes.io/version: 0.1.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-public
     spec:
       cipherSuites:

@@ -45,7 +45,7 @@ service:
 httpRoutes:
   public:
     enabled: true
-    gatewayName: http-public
+    gatewayName: traefik-public
     domain: example.com
     host: __DEPLOYMENT_ID__
     path: /
@@ -53,7 +53,7 @@ httpRoutes:
 ingressRoutes:
   public:
     enabled: true
-    gatewayName: http-public
+    gatewayName: traefik-public
     domain: example.com
     host: __DEPLOYMENT_ID__
     path: /

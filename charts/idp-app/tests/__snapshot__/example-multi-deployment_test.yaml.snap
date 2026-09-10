@@ -203,12 +203,14 @@ should match snapshot:
     apiVersion: gateway.networking.k8s.io/v1
     kind: HTTPRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-api
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.0.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-api-public
     spec:
       hostnames:
@@ -216,8 +218,8 @@ should match snapshot:
       parentRefs:
         - group: gateway.networking.k8s.io
           kind: Gateway
-          name: http-public
-          namespace: dev-gateway
+          name: traefik-public
+          namespace: gateway-test
       rules:
         - backendRefs:
             - group: ""
@@ -234,12 +236,14 @@ should match snapshot:
     apiVersion: gateway.networking.k8s.io/v1
     kind: HTTPRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-scheduler
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.0.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-scheduler-public
     spec:
       hostnames:
@@ -247,8 +251,8 @@ should match snapshot:
       parentRefs:
         - group: gateway.networking.k8s.io
           kind: Gateway
-          name: http-public
-          namespace: dev-gateway
+          name: traefik-public
+          namespace: gateway-test
       rules:
         - backendRefs:
             - group: ""
@@ -265,12 +269,14 @@ should match snapshot:
     apiVersion: gateway.networking.k8s.io/v1
     kind: HTTPRoute
     metadata:
+      annotations:
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-worker
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.0.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-worker-public
     spec:
       hostnames:
@@ -278,8 +284,8 @@ should match snapshot:
       parentRefs:
         - group: gateway.networking.k8s.io
           kind: Gateway
-          name: http-public
-          namespace: dev-gateway
+          name: traefik-public
+          namespace: gateway-test
       rules:
         - backendRefs:
             - group: ""
@@ -405,13 +411,13 @@ should match snapshot:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-api
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.0.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-api-public
     spec:
       entryPoints:
@@ -429,13 +435,13 @@ should match snapshot:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-scheduler
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.0.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-scheduler-public
     spec:
       entryPoints:
@@ -453,13 +459,13 @@ should match snapshot:
     kind: IngressRoute
     metadata:
       annotations:
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       labels:
         app.kubernetes.io/instance: RELEASE-NAME-worker
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: my-app
         app.kubernetes.io/version: 1.0.0
-        traefik.io/controller: traefik-private
+        traefik.io/controller: traefik-public
       name: RELEASE-NAME-worker-public
     spec:
       entryPoints:

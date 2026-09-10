@@ -15,17 +15,27 @@ global:
           host-dash-dev: "<HOST->dev.example.com"
           host-under-dev: "<HOST_>dev.example.com"
         httpGateways:
-          http-public:
+          traefik-public:
             controller: traefik
-            name: http-public
-            namespace: dev-gateway
+            name: traefik-public
+            namespace: gateway-test
             entryPoints:
               - websecure
-            # traefik can be deployed on cluster multiple times, where it uses label selector to select only specific resources (e.g. middleware) that belong to it
+            # traefik can be deployed on cluster multiple times, where it uses label/annotation selector to select only specific resources (e.g. middleware) that belong to it
             labelSelector:
-              traefik.io/controller: traefik-private
+              traefik.io/controller: traefik-public
             annotationSelector:
-              traefik.io/controller: traefik-private
+              traefik.io/controller: traefik-public
+          traefik-private:
+            controller: traefik
+            name: traefik-private
+            namespace: gateway-test
+            entryPoints:
+              - websecure
+            labelSelector:
+              traefik.io/controller: traefik-public
+            annotationSelector:
+              kubernetes.io/ingress.class: traefik-private
         apps:
           oauth2proxy:
             authUrl: http://oauth2proxy.auth.svc.cluster.local
@@ -35,6 +45,24 @@ global:
               - Auth-Proxy-Email
               - Auth-Proxy-Groups
             path: /oauth2
+            # in-cluster service behind authUrl; also the passthrough target when a route
+            # sets forwardAuth.passthrough
+            service:
+              name: oauth2proxy
+              namespace: auth
+              port: 80
+            # provider-agnostic forwardAuth config for ingressRoutes / httpRoutes
+            forwardAuth:
+              # generic, controller-agnostic
+              authUrl: 'http://oauth2proxy.auth.svc.cluster.local/oauth2/auth'
+              authResponseHeaders:
+                - 'Auth-Proxy-Email'
+                - 'Auth-Proxy-Groups'
+              # traefik-specific forwardAuth Middleware settings
+              controllers:
+                traefik:
+                  middlewareParams:
+                    trustForwardHeader: true
           oauth2proxy2:
             authUrl: http://oauth2proxy2.auth.svc.cluster.local
             signinUrl: https://oauth2proxy2.auth.example.com
@@ -43,16 +71,16 @@ global:
               - Auth-Proxy-Email
               - Auth-Proxy-Groups
             path: /oauth2
-          authelia:
-            traefik:
-              forwardAuthMiddleware:
-                address: 'http://authelia.auth.svc.cluster.local/api/authz/forward-auth'
-                trustForwardHeader: true
-                authResponseHeaders:
-                  - 'Remote-User'
-                  - 'Remote-Groups'
-                  - 'Remote-Email'
-                  - 'Remote-Name'
+            # forwardAuth with a controller-specific block
+            forwardAuth:
+              authUrl: 'http://oauth2proxy2.auth.svc.cluster.local/oauth2/auth'
+              authResponseHeaders:
+                - 'Auth-Proxy-Email'
+              # applied only when the route's gateway controller is traefik
+              controllers:
+                traefik:
+                  middlewareParams:
+                    trustForwardHeader: true
         nodePools:
           test1:
             nodeSelector:

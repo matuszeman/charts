@@ -7,6 +7,8 @@
 {{- if ne $gatewayController "traefik" }}
 {{- fail (printf "ingressRoute: gateway '%s' has controller '%s', only 'traefik' is supported" $route.gatewayName $gatewayController) }}
 {{- end }}
+{{- $fa := include "idp-app.forwardAuth.resolve" (list $ $route $routeKey $gateway) | fromYaml }}
+{{- $forwardAuthEnabled := $fa.enabled }}
 {{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
 {{- range $deploymentKey, $deployment := $deployments }}
 {{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
@@ -75,16 +77,35 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
+  {{- $traefikGwConfig := default dict $gateway.traefik }}
+  {{- if $traefikGwConfig.useIngressClassNameOnRoutes }}
+  ingressClassName: {{ $gateway.name | required "global.idpAppConfig.httpGateways.NAME.name required when traefik.useIngressClassNameOnRoutes is true" }}
+  {{- end }}
   entryPoints:
     {{- toYaml $gateway.entryPoints | nindent 4 }}
   routes:
+    {{- if and $forwardAuthEnabled $fa.passthrough }}
+    {{- /* passthrough path -> auth provider service, higher priority, no forwardAuth middleware */}}
+    - match: {{ printf "%s && PathPrefix(`%s`)" $hostMatch $fa.passthrough }}
+      kind: Rule
+      priority: 100
+      services:
+        - name: {{ $fa.backend.name | required "forwardAuth.passthrough: service.name required (set apps.<appName>.service or forwardAuth.service)" }}
+          port: {{ $fa.backend.port | required "forwardAuth.passthrough: service.port required" }}
+          {{- if ne $fa.backend.namespace $.Release.Namespace }}
+          namespace: {{ $fa.backend.namespace }}
+          {{- end }}
+    {{- end }}
     - match: {{ $matchRule }}
       kind: Rule
+      {{- if and $forwardAuthEnabled $fa.passthrough }}
+      priority: 10
+      {{- end }}
       services:
         - name: {{ tpl ($backendRef.name | required "ingressRoute: service.name required") $ | quote }}
           port: {{ $backendRef.port | required "ingressRoute: service.port required" }}
       {{- $middlewareList := list }}
-      {{- if and $route.forwardAuth $route.forwardAuth.enabled }}
+      {{- if $forwardAuthEnabled }}
       {{- $middlewareList = append $middlewareList (dict "name" (printf "%s-%s-forwardauth" (include "idp-app.fullname" $) $routeKey)) }}
       {{- end }}
       {{- if $route.stripPathPrefix }}
@@ -108,35 +129,8 @@ spec:
   {{- end }}
 ---
 {{- end }}
-{{- if and $route.forwardAuth $route.forwardAuth.enabled }}
-{{- $forwardAuthApp := include "idp-app.clusterConfigMapValue" (list $ "apps" $route.forwardAuth.appName) | fromYaml }}
-{{- $traefikConfig := $forwardAuthApp.traefik.forwardAuthMiddleware | required "forwardAuth: app.traefik.forwardAuthMiddleware required" }}
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: {{ include "idp-app.fullname" $ }}-{{ $routeKey }}-forwardauth
-  labels:
-    {{- include "idp-app.labels" $ | nindent 4 }}
-    {{- with $gateway.labelSelector }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- if or $route.annotations $gateway.annotationSelector }}
-  annotations:
-    {{- with $gateway.annotationSelector }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $route.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- end }}
-spec:
-  forwardAuth:
-    {{- $address := $traefikConfig.address }}
-    {{- with $route.forwardAuth.authQueryParams }}
-    {{-   $address = printf "%s?%s" $address (include "idp-app.queryString" .) }}
-    {{- end }}
-    {{- omit $traefikConfig "address" | toYaml | nindent 4 }}
-    address: "{{ $address }}"
+{{- if $forwardAuthEnabled }}
+{{ include "idp-app.forwardAuth.middleware" (list $ $route $routeKey $gateway) }}
 ---
 {{- end }}
 {{- if $route.stripPathPrefix }}

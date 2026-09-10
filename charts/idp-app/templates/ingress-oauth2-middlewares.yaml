@@ -1,0 +1,208 @@
+{{- /*
+Traefik counterpart of the nginx oauth2ProxyAuth annotations emitted by ingress.yaml.
+
+nginx enforces oauth2 with auth-url/auth-signin subrequest annotations; traefik has no
+annotation equivalent, so on traefik ingress classes auth is a forwardAuth Middleware
+chain that ingress.yaml references via traefik.ingress.kubernetes.io/router.middlewares:
+  - <ingress>-oauth2-auth    forwards every request to oauth2-proxy's auth endpoint
+  - <ingress>-oauth2-errors  turns a 401 from the auth check into the oauth2-proxy
+                             sign-in page (403 = wrong group is left as-is)
+The sign-in page links (start, callback, static assets) are relative to the app host,
+so a passthrough Ingress routes the oauth2-proxy path prefix on the app host to the
+oauth2-proxy service. When oauth2-proxy runs in a different namespace the passthrough
+goes through an ExternalName Service — plain Ingress backends cannot cross namespaces
+(requires allowExternalNameServices on the traefik providers; enabled on traefik-external).
+
+The passthrough router carries the <ingress>-oauth2-signin-host headers middleware: it
+overrides X-Forwarded-Host with the signinUrl host, so oauth2-proxy (reverse_proxy mode)
+builds the OAuth redirect_uri on its own host — the one callback registered on the Google
+client — instead of a per-app-host callback that Google rejects with redirect_uri_mismatch.
+Session/CSRF cookies are issued domain-wide (cookie_domains), so the dance completes on
+the oauth2-proxy host and lands back on the app host, mirroring the nginx auth-signin
+flow. Requires signinUrl to share the app host's cookie domain.
+
+Because the callback runs on the signinUrl host, the errors middleware must pass an
+absolute rd: traefik's {url} placeholder is only the escaped path+query, and a relative
+rd would resolve against the oauth2-proxy host after the callback (404) instead of the
+app host. The https%3A%2F%2F prefix is pre-escaped to match {url}'s escaping.
+
+The sign-in service is resolved from ingress.oauth2ProxyAuth.service, falling back to
+the cluster-config app entry (apps.<appName>.service).
+*/ -}}
+{{- if not $.Values.debug -}}
+{{- $ingresses := merge (dict "" $.Values.ingress) $.Values.ingresses }}
+{{- range $ingressKey, $ingressSpec := $ingresses }}
+{{- if $ingressSpec.enabled -}}
+{{- $ingress := mustMergeOverwrite (deepCopy $.Values.global.idpAppConfig.defaults.ingress) (deepCopy $ingressSpec) }}
+{{- $ingressClassName := required "ingress.className required" $ingress.className }}
+{{- if and $ingress.oauth2ProxyAuth.enabled (hasPrefix "traefik" $ingressClassName) }}
+{{- $gateway := fromYaml (include "idp-app.clusterConfigMapValue" (list $ "httpGateways" $ingressClassName)) }}
+{{- $deployments := default (dict "" dict) $.Values.deployment.multi }}
+{{- range $deploymentKey, $deployment := $deployments }}
+{{- $deploymentName := include "idp-app.deploymentName" (list $ $deploymentKey) }}
+{{- $ingressName := join "-" (compact (list $deploymentName $ingressKey)) }}
+{{- $host := "" }}
+{{- if $ingress.domain }}
+{{- $domain := include "idp-app.clusterConfigMapValue" (list $ "domains" $ingress.domain) }}
+{{- if $ingress.host }}
+{{- $host = (printf "%s.%s" $ingress.host $domain) | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- else }}
+{{- $host = $domain }}
+{{- end }}
+{{- else }}
+{{- $host = ($ingress.host | required "ingress: host or domain required") | replace "__DEPLOYMENT_ID__" $deploymentKey }}
+{{- end }}
+{{- $oauth2ProxyApp := include "idp-app.clusterConfigMapValue" (list $ "apps" $ingress.oauth2ProxyAuth.appName) | fromYaml }}
+{{- $path := $oauth2ProxyApp.path | required "oauth2proxy: path required" }}
+{{- $authUrl := printf "%s%s/auth" ($oauth2ProxyApp.authUrl | required "oauth2proxy: authUrl required") $path }}
+{{- if $ingress.oauth2ProxyAuth.allowedGroups }}
+{{- $authUrl = printf "%s?allowed_groups=%s" $authUrl (join "," $ingress.oauth2ProxyAuth.allowedGroups) }}
+{{- end }}
+{{- $signinUrl := tpl ($oauth2ProxyApp.signinUrl | required "oauth2proxy: signinUrl required") $ }}
+{{- $signinHost := $signinUrl | trimPrefix "https://" | trimPrefix "http://" | trimSuffix "/" }}
+{{- $tlsSecretName := printf "%s-ingress-tls" $ingressName }}
+{{- if kindIs "map" $ingress.tls }}
+{{- $tlsSecretName = tpl ($ingress.tls.secretName | required "ingress: tls.secretName is required") $ }}
+{{- end }}
+{{- $signinOverride := $ingress.oauth2ProxyAuth.service | default dict }}
+{{- $signinDefault := $oauth2ProxyApp.service | default dict }}
+{{- $signinName := $signinOverride.name | default $signinDefault.name | required "oauth2proxy: service.name required for traefik forwardAuth" }}
+{{- $signinNamespace := $signinOverride.namespace | default $signinDefault.namespace | default $.Release.Namespace }}
+{{- $signinPort := $signinOverride.port | default $signinDefault.port | default 80 }}
+{{- $crossNamespace := ne $signinNamespace $.Release.Namespace }}
+{{- $signinBackendName := $crossNamespace | ternary (printf "%s-oauth2-signin" $ingressName) $signinName }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $ingressName }}-oauth2
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $gateway.annotationSelector }}
+  annotations:
+    {{- toYaml $gateway.annotationSelector | nindent 4 }}
+  {{- end }}
+spec:
+  chain:
+    middlewares:
+      # errors must wrap auth so a 401 from the auth check is turned into a sign-in
+      - name: {{ $ingressName }}-oauth2-errors
+      - name: {{ $ingressName }}-oauth2-auth
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $ingressName }}-oauth2-auth
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $gateway.annotationSelector }}
+  annotations:
+    {{- toYaml $gateway.annotationSelector | nindent 4 }}
+  {{- end }}
+spec:
+  forwardAuth:
+    address: {{ $authUrl | quote }}
+    trustForwardHeader: true
+    authResponseHeaders:
+      {{- toYaml ($oauth2ProxyApp.responseHeaders | default (list "Auth-Proxy-Email" "Auth-Proxy-Groups")) | nindent 6 }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $ingressName }}-oauth2-errors
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $gateway.annotationSelector }}
+  annotations:
+    {{- toYaml $gateway.annotationSelector | nindent 4 }}
+  {{- end }}
+spec:
+  errors:
+    status:
+      - "401"
+    service:
+      name: {{ $signinBackendName }}
+      port: {{ $signinPort }}
+    query: {{ printf "%s/sign_in?rd=https%%3A%%2F%%2F%s{url}" $path $host | quote }}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ $ingressName }}-oauth2-signin-host
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- if $gateway.annotationSelector }}
+  annotations:
+    {{- toYaml $gateway.annotationSelector | nindent 4 }}
+  {{- end }}
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Host: {{ $signinHost | quote }}
+---
+{{- if $crossNamespace }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $ingressName }}-oauth2-signin
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ $signinName }}.{{ $signinNamespace }}.svc.cluster.local
+  ports:
+    - port: {{ $signinPort }}
+---
+{{- end }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $ingressName }}-oauth2-passthrough
+  labels:
+    {{- include "idp-app.labelsMulti" (list $ $deploymentKey) | nindent 4 }}
+    {{- with $gateway.labelSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: {{ $.Release.Namespace }}-{{ $ingressName }}-oauth2-signin-host@kubernetescrd
+    {{- with $gateway.annotationSelector }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if $ingress.annotations }}
+    {{- toYaml $ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ $ingress.className }}
+  tls:
+    - hosts:
+        - {{ $host | quote }}
+        # reuses the certificate requested by the main ingress (same host, same secret)
+      secretName: {{ $tlsSecretName }}
+  rules:
+    - host: {{ $host | quote }}
+      http:
+        paths:
+          - path: {{ $path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $signinBackendName }}
+                port:
+                  number: {{ $signinPort }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

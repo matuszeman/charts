@@ -28,21 +28,23 @@ global:
                 value: worker
                 effect: NoSchedule
         httpGateways:
-          http-public:
+          traefik-public:
             controller: traefik
-            name: http-public
+            name: traefik-public
             namespace: gateway
             entryPoints:
               - websecure
         apps:
           authelia:
-            traefik:
-              forwardAuthMiddleware:
-                address: http://authelia.auth.svc.cluster.local/api/authz/forward-auth
-                trustForwardHeader: true
-                authResponseHeaders:
-                  - Remote-User
-                  - Remote-Groups
+            forwardAuth:
+              authUrl: http://authelia.auth.svc.cluster.local/api/authz/forward-auth
+              authResponseHeaders:
+                - Remote-User
+                - Remote-Groups
+              controllers:
+                traefik:
+                  middlewareParams:
+                    trustForwardHeader: true
 
       staging:
         aws_region: eu-central-1
@@ -54,9 +56,9 @@ global:
             nodeSelector:
               role: worker
         httpGateways:
-          http-public:
+          traefik-public:
             controller: traefik
-            name: http-public
+            name: traefik-public
             namespace: gateway
             entryPoints:
               - websecure
@@ -85,7 +87,7 @@ ingress:
 httpRoutes:
   public:
     enabled: true
-    gatewayName: http-public
+    gatewayName: traefik-public
     domain: public
     host: my-app
     path: /
